@@ -1,0 +1,48 @@
+{
+  "name": "pension-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "setup:pages": "node create-pages.js",
+    "dev:api": "py -3.11 -m uvicorn speaker_service.main:app --host 0.0.0.0 --port 8001"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^7.0.8",
+    "@picovoice/eagle-web": "^3.0.0",
+    "@picovoice/web-voice-processor": "^4.0.9",
+    "@tanstack/react-query": "^5.96.2",
+    "@tensorflow/tfjs": "^4.22.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "convex": "^1.34.1",
+    "date-fns": "^4.1.0",
+    "face-api.js": "^0.22.2",
+    "lucide-react": "^1.7.0",
+    "next": "16.2.2",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.4.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.72.1",
+    "recharts": "^3.8.1",
+    "resend": "^6.12.0",
+    "shadcn": "^4.1.2",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.5.0",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20.19.39",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

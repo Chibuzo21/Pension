@@ -1,0 +1,190 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { UserButton, useUser } from "@clerk/nextjs";
+import { Menu, X } from "lucide-react";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
+import { DialogDescription, DialogTitle } from "../ui/dialog";
+import { useState } from "react";
+
+interface SidebarProps {
+  role?: string;
+}
+
+const adminNav = [
+  {
+    section: "Overview",
+    items: [{ href: "/dashboard/admin", label: "📊 Dashboard" }],
+  },
+  {
+    section: "Pensioners",
+    items: [
+      { href: "/dashboard/admin/pensioners", label: "👥 All Pensioners" },
+      { href: "/dashboard/admin/pensioners/new", label: "➕ Register New" },
+      { href: "/dashboard/admin/deaths", label: "⚰️ Report Deaths" },
+    ],
+  },
+  {
+    section: "Biometrics",
+    items: [
+      { href: "/dashboard/admin/enroll/face", label: "📷 Enrol Face" },
+      { href: "/dashboard/admin/enroll/voice", label: "🎙️ Enrol Voice" },
+    ],
+  },
+  {
+    section: "Reports",
+    items: [
+      { href: "/dashboard/admin/reports", label: "📈 Monthly Reports" },
+      { href: "/dashboard/admin/audit", label: "📜 Audit Logs" },
+    ],
+  },
+  {
+    section: "Admin",
+    items: [{ href: "/dashboard/admin/users", label: "🔑 User Accounts" }],
+  },
+];
+
+const pensionerNav = [
+  {
+    section: "My Account",
+    items: [
+      { href: "/dashboard/portal", label: "📊 My Dashboard" },
+      { href: "/dashboard/portal/verify", label: "🔐 Verify Liveness" },
+      { href: "/dashboard/portal/documents", label: "📄 My Documents" },
+    ],
+  },
+];
+
+// ── Shared nav content (used in both desktop sidebar + mobile sheet) ──────────
+function NavContent({
+  role,
+  onLinkClick,
+}: {
+  role?: string;
+  onLinkClick?: () => void;
+}) {
+  const pathname = usePathname();
+  const { user } = useUser();
+  const nav = role === "pensioner" ? pensionerNav : adminNav;
+
+  function isActive(href: string) {
+    if (href === "/dashboard/admin") return pathname === "/dashboard/admin";
+    if (href === "/dashboard/portal") return pathname === "/dashboard/portal";
+    return pathname === href;
+  }
+
+  return (
+    <div className='flex flex-col h-full'>
+      {/* Brand header */}
+      <div className='px-4 py-4 border-b border-white/8'>
+        <div className='flex items-center gap-2.5'>
+          <span className='text-xl'>🇳🇬</span>
+          <div>
+            <p className='text-white text-[11px] font-bold leading-tight'>
+              BPMLVS
+            </p>
+            <p className='text-white/30 text-[8px] uppercase tracking-[0.8px]'>
+              {role === "pensioner" ? "Pensioner Portal" : "Admin Console"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav links */}
+      <nav className='flex-1 overflow-y-auto scrollbar '>
+        {nav.map(({ section, items }) => (
+          <div key={section}>
+            <p className='px-3.5 pt-3 pb-0.5 text-[9px] text-white/25 font-bold uppercase tracking-[1.6px]'>
+              {section}
+            </p>
+            {items.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={onLinkClick}
+                className={`flex items-center gap-1.5 px-3.5 py-1.75 text-[11px] transition-all border-l-[3px] ${
+                  isActive(href)
+                    ? "bg-white/[0.07] text-white border-l-[#c8960c]"
+                    : "text-white/50 border-l-transparent hover:bg-white/6 hover:text-white"
+                }`}>
+                {label}
+              </Link>
+            ))}
+          </div>
+        ))}
+      </nav>
+
+      {/* User footer */}
+      <div className='px-3.5 py-3 border-t border-white/8] flex items-center gap-2.5'>
+        <UserButton
+          appearance={{
+            elements: {
+              avatarBox: "w-7 h-7",
+            },
+          }}
+        />
+        <div className='min-w-0'>
+          <p className='text-white text-[11px] font-semibold truncate'>
+            {user?.fullName ?? "Loading…"}
+          </p>
+          <p className='text-white/35 text-[8.5px] uppercase tracking-[0.7px] truncate'>
+            {role === "pensioner" ? "Pensioner" : "Administrator"}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
+export function Sidebar({ role }: SidebarProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      {/* ── Desktop sidebar (lg+) ── */}
+      <aside className='hidden lg:flex w-47.5  bg-[#003311] flex-col shrink-0 h-full '>
+        <NavContent role={role} />
+      </aside>
+
+      {/* ── Mobile trigger button (< lg) ── */}
+      <div className='lg:hidden'>
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <button className='flex cursor-pointer items-center justify-center w-9 h-9 rounded-lg bg-[#003311] border border-white/10 text-white/70 hover:text-white transition-colors'>
+              <Menu size={16} />
+            </button>
+          </SheetTrigger>
+
+          <SheetContent
+            side='left'
+            className='w-55 p-0 bg-[#003311] border-r border-white/8'>
+            <VisuallyHidden>
+              <DialogTitle>Sidebar Menu</DialogTitle>
+              <DialogDescription>
+                Sidebar menu for admins and pensioners
+              </DialogDescription>
+            </VisuallyHidden>
+            {/* Close button */}
+            <SheetClose className='absolute right-3 top-3 z-10 flex items-center justify-center w-7 h-7 rounded-md bg-white/[0.07] text-white/50 hover:text-white transition-colors cursor-pointer'>
+              <X size={13} />
+            </SheetClose>
+
+            <NavContent
+              role={role}
+              onLinkClick={() => {
+                setOpen(false);
+              }}
+            />
+          </SheetContent>
+        </Sheet>
+      </div>
+    </>
+  );
+}

@@ -1,0 +1,375 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+import { paginationOptsValidator } from "convex/server";
+
+// ── Queries ────────────────────────────────────────────────────────
+
+export const list = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    status: v.optional(v.string()),
+    biometricLevel: v.optional(v.string()),
+  },
+  handler: async (ctx, { paginationOpts, status, biometricLevel }) => {
+    let q = ctx.db.query("pensioners").order("desc");
+
+    if (status) {
+      q = ctx.db
+        .query("pensioners")
+        .withIndex("by_status", (q) =>
+          q.eq(
+            "status",
+            status as "active" | "deceased" | "suspended" | "flagged",
+          ),
+        )
+        .order("desc");
+    }
+
+    const page = await q.paginate(paginationOpts);
+
+    // Attach latest verification to each pensioner
+    const enriched = await Promise.all(
+      page.page.map(async (p) => {
+        const latestVerification = await ctx.db
+          .query("verifications")
+          .withIndex("by_pensioner", (q) => q.eq("pensionerId", p._id))
+          .order("desc")
+          .first();
+        return { ...p, latestVerification };
+      }),
+    );
+
+    return { ...page, page: enriched };
+  },
+});
+
+export const search = query({
+  args: {
+    query: v.string(),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, { query: searchQuery, status }) => {
+    if (!searchQuery.trim()) {
+      return ctx.db.query("pensioners").order("desc").take(50);
+    }
+
+    const results = await ctx.db
+      .query("pensioners")
+      .withSearchIndex("search_name", (q) => {
+        let sq = q.search("fullName", searchQuery);
+        if (status) {
+          sq = sq.eq(
+            "status",
+            status as "active" | "deceased" | "suspended" | "flagged",
+          );
+        }
+        return sq;
+      })
+      .take(50);
+
+    return results;
+  },
+});
+
+export const getById = query({
+  args: { id: v.id("pensioners") },
+  handler: async (ctx, { id }) => {
+    const pensioner = await ctx.db.get(id);
+    if (!pensioner) return null;
+
+    const nextOfKin = await ctx.db
+      .query("nextOfKin")
+      .withIndex("by_pensioner", (q) => q.eq("pensionerId", id))
+      .collect();
+
+    const documents = await ctx.db
+      .query("documents")
+      .withIndex("by_pensioner", (q) => q.eq("pensionerId", id))
+      .collect();
+
+    const verifications = await ctx.db
+      .query("verifications")
+      .withIndex("by_pensioner", (q) => q.eq("pensionerId", id))
+      .order("desc")
+      .take(20);
+
+    return { ...pensioner, nextOfKin, documents, verifications };
+  },
+});
+
+export const getByPensionId = query({
+  args: { pensionId: v.string() },
+  handler: async (ctx, { pensionId }) => {
+    return ctx.db
+      .query("pensioners")
+      .withIndex("by_pensionId", (q) => q.eq("pensionId", pensionId))
+      .first();
+  },
+});
+
+export const getStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("pensioners").collect();
+    const total = all.length;
+    const active = all.filter((p) => p.status === "active").length;
+    const deceased = all.filter((p) => p.status === "deceased").length;
+    const suspended = all.filter((p) => p.status === "suspended").length;
+    const flagged = all.filter((p) => p.status === "flagged").length;
+    const l3 = all.filter((p) => p.biometricLevel === "L3").length;
+    const l1l2 = all.filter(
+      (p) => p.biometricLevel === "L1" || p.biometricLevel === "L2",
+    ).length;
+    // const l1 = all.filter((p) => p.biometricLevel === "L1").length;
+    const l0 = all.filter((p) => p.biometricLevel === "L0").length;
+
+    // Verifications this month
+    const now = new Date();
+    const firstOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).toISOString();
+    const recentVerifications = await ctx.db
+      .query("verifications")
+      .withIndex("by_date", (q) => q.gte("verificationDate", firstOfMonth))
+      .collect();
+    const verifiedThisMonth = recentVerifications.filter(
+      (v) => v.status === "VERIFIED",
+    ).length;
+    const failedThisMonth = recentVerifications.filter(
+      (v) => v.status === "FAILED",
+    ).length;
+
+    return {
+      total,
+      active,
+      deceased,
+      suspended,
+      flagged,
+      biometric: { l3, l1l2, l0 },
+      verifiedThisMonth,
+      failedThisMonth,
+      complianceRate:
+        active > 0 ? Math.round((verifiedThisMonth / active) * 100) : 0,
+    };
+  },
+});
+// Get a pensioner by email (for auto-linking on signup)
+export const getByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    return await ctx.db
+      .query("pensioners")
+      .filter((q) => q.eq(q.field("email"), email))
+      .first();
+  },
+});
+
+// Link a Convex userId onto the pensioner record
+export const linkUser = mutation({
+  args: {
+    pensionerId: v.id("pensioners"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { pensionerId, userId }) => {
+    await ctx.db.patch(pensionerId, { userId: userId });
+  },
+});
+
+// ── Mutations ──────────────────────────────────────────────────────
+function generateCode(length = 6) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+
+  return Array.from(array, (x) => chars[x % chars.length]).join("");
+}
+
+export const create = mutation({
+  args: {
+    pensionId: v.string(),
+    fullName: v.string(),
+    dob: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    address: v.optional(v.string()),
+    bvn: v.optional(v.string()),
+    nin: v.optional(v.string()),
+    dateOfEmployment: v.optional(v.string()),
+    dateOfRetirement: v.optional(v.string()),
+    lastMda: v.optional(v.string()),
+    subTreasury: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    accountNumber: v.optional(v.string()),
+    gratuityAmount: v.number(),
+    gratuityPaid: v.number(),
+    createdByUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Check duplicate pension ID
+    const existing = await ctx.db
+      .query("pensioners")
+      .withIndex("by_pensionId", (q) => q.eq("pensionId", args.pensionId))
+      .first();
+    if (existing)
+      throw new Error(`Pension ID ${args.pensionId} already exists`);
+
+    const id = await ctx.db.insert("pensioners", {
+      ...args,
+      status: "active",
+      biometricLevel: "L0",
+      verificationCode: generateCode(),
+    });
+
+    await ctx.db.insert("auditLogs", {
+      userId: args.createdByUserId,
+      action: "PENSIONER_CREATED",
+      entityType: "pensioner",
+      entityId: id,
+      details: `Created pensioner ${args.fullName} (${args.pensionId})`,
+    });
+
+    return id;
+  },
+});
+
+export const update = mutation({
+  args: {
+    id: v.id("pensioners"),
+    fullName: v.optional(v.string()),
+    dob: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    address: v.optional(v.string()),
+    bvn: v.optional(v.string()),
+    nin: v.optional(v.string()),
+    dateOfEmployment: v.optional(v.string()),
+    dateOfRetirement: v.optional(v.string()),
+    lastMda: v.optional(v.string()),
+    subTreasury: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    accountNumber: v.optional(v.string()),
+    gratuityAmount: v.optional(v.number()),
+    gratuityPaid: v.optional(v.number()),
+    updatedByUserId: v.id("users"),
+  },
+  handler: async (ctx, { id, updatedByUserId, ...fields }) => {
+    await ctx.db.patch(id, fields);
+    await ctx.db.insert("auditLogs", {
+      userId: updatedByUserId,
+      action: "PENSIONER_UPDATED",
+      entityType: "pensioner",
+      entityId: id,
+      details: `Updated pensioner record`,
+    });
+  },
+});
+
+export const updateStatus = mutation({
+  args: {
+    id: v.id("pensioners"),
+    status: v.union(
+      v.literal("active"),
+      v.literal("deceased"),
+      v.literal("suspended"),
+      v.literal("flagged"),
+    ),
+    updatedByUserId: v.id("users"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, status, updatedByUserId, reason }) => {
+    const pensioner = await ctx.db.get(id);
+    if (!pensioner) throw new Error("Pensioner not found");
+
+    await ctx.db.patch(id, { status });
+    await ctx.db.insert("auditLogs", {
+      userId: updatedByUserId,
+      action: "STATUS_CHANGED",
+      entityType: "pensioner",
+      entityId: id,
+      details: `Status changed from ${pensioner.status} to ${status}${reason ? `: ${reason}` : ""}`,
+    });
+  },
+});
+
+export const updateBiometric = mutation({
+  args: {
+    id: v.id("pensioners"),
+    faceEncoding: v.optional(v.string()),
+    referencePhotoStorageId: v.optional(v.string()),
+    fingerprintCredentialId: v.optional(v.string()),
+    fingerprintPublicKey: v.optional(v.string()),
+    fingerprintSignCount: v.optional(v.number()),
+    voiceEncoding: v.optional(v.string()),
+    biometricLevel: v.union(
+      v.literal("L0"),
+      v.literal("L1"),
+      v.literal("L2"),
+      v.literal("L3"),
+    ),
+    updatedByUserId: v.id("users"),
+  },
+  handler: async (ctx, { id, updatedByUserId, ...biometricFields }) => {
+    await ctx.db.patch(id, biometricFields);
+    await ctx.db.insert("auditLogs", {
+      userId: updatedByUserId,
+      action: "BIOMETRIC_UPDATED",
+      entityType: "pensioner",
+      entityId: id,
+      details: `Biometric level set to ${biometricFields.biometricLevel}`,
+    });
+  },
+});
+
+// ── Next of Kin ────────────────────────────────────────────────────
+export const upsertNextOfKin = mutation({
+  args: {
+    pensionerId: v.id("pensioners"),
+    fullName: v.string(), // ✅ was "name"
+    relationship: v.string(),
+    phone: v.string(),
+    bvn: v.optional(v.string()),
+    nin: v.optional(v.string()),
+    nationalId: v.optional(v.string()),
+    address: v.optional(v.string()),
+    updatedByUserId: v.id("users"),
+  },
+  handler: async (ctx, { updatedByUserId, ...args }) => {
+    const existing = await ctx.db
+      .query("nextOfKin")
+      .withIndex("by_pensioner", (q) => q.eq("pensionerId", args.pensionerId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, args);
+    } else {
+      await ctx.db.insert("nextOfKin", {
+        // ✅ all required fields present
+        ...args,
+        isVerified: false,
+        addedByUserId: updatedByUserId,
+        addedAt: Date.now(),
+      });
+    }
+
+    await ctx.db.insert("auditLogs", {
+      userId: updatedByUserId,
+      action: "NOK_UPDATED",
+      entityType: "pensioner",
+      entityId: args.pensionerId,
+      details: `Next of kin updated: ${args.fullName}`,
+    });
+  },
+});
+
+export const getByNin = query({
+  args: { nin: v.string() },
+  handler: async (ctx, { nin }) => {
+    return ctx.db
+      .query("pensioners")
+      .withIndex("by_nin", (q) => q.eq("nin", nin))
+      .first();
+  },
+});
