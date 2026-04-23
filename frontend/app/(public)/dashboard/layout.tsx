@@ -33,7 +33,7 @@ export default function DashboardLayout({
 
   return (
     // h-screen + flex-col: topbar takes its natural h-12, rest fills remaining
-    <div className=' h-full  flex flex-col bg-background'>
+    <div className='h-full  flex flex-col bg-background overflow-hidden'>
       <TopBar role={role} onMenuClick={() => setSidebarOpen(true)} />
 
       {/* This row must be overflow-hidden so only <main> scrolls */}
@@ -42,7 +42,7 @@ export default function DashboardLayout({
         <Sidebar role={role} open={sidebarOpen} onOpenChange={setSidebarOpen} />
 
         {/* Scrollable content area */}
-        <main className='flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin'>
+        <main className='ml-47.5 mt-12 flex-1 overflow-y-auto h-[calc(100vh-3rem)] p-4 md:p-6 scrollbar-thin'>
           {children}
         </main>
       </div>

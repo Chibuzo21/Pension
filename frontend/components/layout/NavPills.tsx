@@ -82,12 +82,7 @@ export default function NavPills() {
   ];
 
   const isActive = (href: string): boolean => {
-    if (
-      href.startsWith("/dashboard/admin/pensioners") &&
-      pathname !== "/dashboard/admin/pensioners"
-    )
-      return false;
-    return pathname.startsWith(href);
+    return pathname === href;
   };
 
   const activeItem = screens.find((s) => isActive(s.href));
