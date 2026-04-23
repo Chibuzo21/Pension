@@ -42,7 +42,7 @@ export default function DashboardLayout({
         <Sidebar role={role} open={sidebarOpen} onOpenChange={setSidebarOpen} />
 
         {/* Scrollable content area */}
-        <main className='ml-47.5 mt-12 flex-1 overflow-y-auto h-[calc(100vh-3rem)] p-4 md:p-6 scrollbar-thin'>
+        <main className='md:ml-47.5 mt-12 flex-1 overflow-y-auto h-[calc(100vh-3rem)] p-4 md:p-6 scrollbar-thin'>
           {children}
         </main>
       </div>

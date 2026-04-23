@@ -77,7 +77,7 @@ function NavContent({
   }
 
   return (
-    <div className='flex flex-col h-full'>
+    <div className='flex flex-col h-full overflow-y-auto scrollbar'>
       {/* Brand header */}
       <div className='px-4 py-4 border-b border-white/8'>
         <div className='flex items-center gap-2.5'>
@@ -94,7 +94,7 @@ function NavContent({
       </div>
 
       {/* Nav links */}
-      <nav className='flex-1 overflow-y-auto scrollbar '>
+      <nav className='flex-1  scrollbar '>
         {nav.map(({ section, items }) => (
           <div key={section}>
             <p className='px-3.5 pt-3 pb-0.5 text-[9px] text-white/25 font-bold uppercase tracking-[1.6px]'>
@@ -119,13 +119,6 @@ function NavContent({
 
       {/* User footer */}
       <div className='px-3.5 py-3 border-t border-white/8] flex items-center gap-2.5'>
-        <UserButton
-          appearance={{
-            elements: {
-              avatarBox: "w-7 h-7",
-            },
-          }}
-        />
         <div className='min-w-0'>
           <p className='text-white text-[11px] font-semibold truncate'>
             {user?.fullName ?? "Loading…"}
@@ -149,7 +142,7 @@ export function Sidebar({ role, open = false, onOpenChange }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar — unchanged */}
-      <aside className='hidden fixed top-12 left-0 z-40 lg:flex w-47.5 bg-[#003311] flex-col shrink-0 overflow-hidden h-full'>
+      <aside className='hidden fixed top-12 left-0 md:flex w-47.5 bg-[#003311] flex-col shrink-0 h-full  overflow-y-auto'>
         <NavContent role={role} />
       </aside>
 

@@ -52,7 +52,7 @@ export function TopBar({
     <header className='h-12 shrink-0 fixed w-full top-0 z-30 bg-[#001a08] flex items-center justify-between px-5 border-b-2 border-[#c8960c] '>
       <button
         onClick={onMenuClick}
-        className='lg:hidden mr-3 flex items-center justify-center w-8 h-8 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent transition-colors bg-[#003311] border border-white/10 text-white/70 hover:text-white'>
+        className='md:hidden mr-3 flex items-center justify-center w-8 h-8 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent transition-colors bg-[#003311] border border-white/10 text-white/70 hover:text-white'>
         <Menu size={16} />
       </button>
 
