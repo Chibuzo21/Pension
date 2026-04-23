@@ -26,7 +26,7 @@ export default function DeathsPage() {
   } = useDeathActions(convexUserId);
 
   return (
-    <div className='overflow-y-auto h-[calc(100dvh-64px)]'>
+    <div className=''>
       {/* Header */}
       <div className='bg-white border-b border-mist p-4 rounded-lg'>
         <h2 className='text-lg font-bold'>Death &amp; Dormancy Management</h2>

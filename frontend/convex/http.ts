@@ -136,6 +136,42 @@ http.route({
         return new Response("Processing error", { status: 500 });
       }
     }
+    // Add this block right after your user.created/user.updated block
+
+    if (type === "session.created") {
+      const clerkId = data.user_id;
+
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+        undefined;
+
+      const convexUser = await ctx.runQuery(api.users.getByClerkId, {
+        clerkId,
+      });
+
+      await ctx.runMutation(api.users.insertAuditLog, {
+        userId: convexUser?._id,
+        username: convexUser?.username,
+        action: "LOGIN",
+        details: "Signed in via Clerk",
+        ipAddress: ip,
+      });
+    }
+
+    if (type === "session.removed" || type === "session.ended") {
+      const clerkId = data.user_id;
+
+      const convexUser = await ctx.runQuery(api.users.getByClerkId, {
+        clerkId,
+      });
+
+      await ctx.runMutation(api.users.insertAuditLog, {
+        userId: convexUser?._id,
+        username: convexUser?.username,
+        action: "LOGOUT",
+        details: "Session ended",
+      });
+    }
     return new Response(null, { status: 200 });
   }),
 });

@@ -53,7 +53,7 @@ function PensionerDetailInner() {
   /* Loading */
   if (pensioner === undefined) {
     return (
-      <div className='flex h-[calc(100vh-50px)] items-center justify-center'>
+      <div className='flex  items-center justify-center'>
         <div className='text-center text-muted-foreground'>
           <div className='mb-2 text-[32px]'>⏳</div>
           Loading…
@@ -65,7 +65,7 @@ function PensionerDetailInner() {
   /* Not found */
   if (!pensioner) {
     return (
-      <div className='flex h-[calc(100vh-50px)] items-center justify-center'>
+      <div className='flex  items-center justify-center'>
         <div className='text-center'>
           <div className='mb-2 text-[32px]'>❓</div>
           <p className='mb-4 text-muted-foreground'>Pensioner not found</p>
@@ -78,7 +78,7 @@ function PensionerDetailInner() {
   }
 
   return (
-    <div className='h-[calc(100vh-50px)] overflow-y-auto'>
+    <div className=''>
       <PensionerHeader />
       <StatusBanners
         status={status}

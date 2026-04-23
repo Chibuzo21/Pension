@@ -15,7 +15,7 @@ export default function AdminVerifyHubPage() {
   );
 
   return (
-    <div className=' overflow-y-auto h-[calc(100vh-50px)]'>
+    <div className=''>
       <div className='bg-white border-b border-mist p-4'>
         <h2 className='text-lg font-semibold'>🔐 Multi-Modal Verify</h2>
         <p className='text-[10px] text-muted-foreground mt-0.5'>

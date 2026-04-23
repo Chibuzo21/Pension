@@ -19,7 +19,7 @@ export default function AuditLogsPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className='overflow-hidden'>
         <CardHeader className='pb-3 pt-4 px-4'>
           <CardTitle className='text-sm flex items-center gap-2'>
             <ScrollText className='h-4 w-4 text-muted-foreground' />

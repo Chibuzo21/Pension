@@ -48,7 +48,7 @@ export default function UsersPage() {
 
   if (!isAdmin) {
     return (
-      <div className='flex flex-col items-center justify-center gap-3 h-[calc(100vh-50px)]'>
+      <div className='flex flex-col items-center justify-center gap-3'>
         <span className='text-[40px]'>🔒</span>
         <p className='text-[13px] text-slate'>
           Admin access required to manage users.

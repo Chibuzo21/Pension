@@ -174,7 +174,16 @@ export const linkUser = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, { pensionerId, userId }) => {
-    await ctx.db.patch(pensionerId, { userId: userId });
+    const pensioner = await ctx.db.get(pensionerId);
+    await ctx.db.patch(pensionerId, { userId });
+
+    await ctx.db.insert("auditLogs", {
+      userId,
+      action: "PENSIONER_LINKED",
+      entityType: "pensioner",
+      entityId: pensionerId,
+      details: `Pensioner ${pensioner?.fullName} linked to user account`,
+    });
   },
 });
 

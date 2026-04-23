@@ -44,7 +44,7 @@ export default function PensionerEnrolPage() {
     .join("");
 
   return (
-    <div className='overflow-y-auto h-[calc(100dvh-64px)]'>
+    <div className=''>
       {/* Top bar */}
 
       <EnrollTopBar pensioner={pensioner} pensionerId={pensionerId} />
