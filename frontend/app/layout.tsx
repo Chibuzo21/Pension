@@ -41,7 +41,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${dmSans.variable} ${playfair.variable}`}>
         {/* font-sans applies DM Sans to everything; antialiased for crispness */}
-        <body className='font-sans antialiased'>
+        <body className='font-sans antialiased h-full overflow-hidden'>
           <Toaster />
           <ConvexClientProvider>{children}</ConvexClientProvider>
         </body>

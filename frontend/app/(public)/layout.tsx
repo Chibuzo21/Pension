@@ -11,7 +11,7 @@ export default function PublicLayout({
       <div className='fixed bottom-5 left-1/2 -translate-x-1/2 z-50'>
         <NavPills />
       </div>
-      {children}
+      <div className='pb-24'>{children}</div>
     </div>
   );
 }

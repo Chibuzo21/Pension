@@ -149,7 +149,7 @@ export function Sidebar({ role, open = false, onOpenChange }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar — unchanged */}
-      <aside className='hidden lg:flex w-47.5 bg-[#003311] flex-col shrink-0 h-full'>
+      <aside className='hidden lg:flex w-47.5 bg-[#003311] flex-col shrink-0 min-h-screen h-fit'>
         <NavContent role={role} />
       </aside>
 

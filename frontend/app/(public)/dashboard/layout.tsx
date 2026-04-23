@@ -33,7 +33,7 @@ export default function DashboardLayout({
 
   return (
     // h-screen + flex-col: topbar takes its natural h-12, rest fills remaining
-    <div className='h-screen flex flex-col bg-background overflow-hidden'>
+    <div className='min-h-screen h-full  flex flex-col bg-background overflow-hidden'>
       <TopBar role={role} onMenuClick={() => setSidebarOpen(true)} />
 
       {/* This row must be overflow-hidden so only <main> scrolls */}
