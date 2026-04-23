@@ -7,11 +7,11 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className='min-h-full overflow-y-auto'>
+    <div className=''>
       <div className='fixed bottom-5 left-1/2 -translate-x-1/2 z-50'>
         <NavPills />
       </div>
-      <div className='pb-24'>{children}</div>
+      <div className='md:pb-24 pb-12'>{children}</div>
     </div>
   );
 }

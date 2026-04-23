@@ -103,9 +103,6 @@
     line-height: 1.6;
     @apply antialiased;
   }
-  html,
-  body {
-  }
 }
 
 /* ── Topbar ─────────────────────────────────────────────── */

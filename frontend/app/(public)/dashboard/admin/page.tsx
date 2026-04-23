@@ -15,7 +15,7 @@ export default function AdminDashboardPage() {
   const s = stats;
 
   return (
-    <div className='md:p-5 p-2 overflow-y-auto max-h-[calc(100vh-50px)] overflow-x-hidden'>
+    <div className='md:p-5 p-2  overflow-x-hidden'>
       <div className='flex items-start justify-between mb-4 mt-2'>
         <div>
           <div className='text-2xl font-bold text-ink leading-tight'>

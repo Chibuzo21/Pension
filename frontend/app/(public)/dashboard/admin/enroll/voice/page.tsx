@@ -96,7 +96,7 @@ export default function EnrolVoicePage() {
   }
 
   return (
-    <div className='overflow-y-auto h-[calc(100dvh-64px)]'>
+    <div className=''>
       <div className='bg-white border-b border-mist p-4 rounded-lg mx-4'>
         <h2 className='text-lg font-bold'>🎙️ Voice Enrolment</h2>
         <p className='text-sm text-muted-foreground mt-1'>

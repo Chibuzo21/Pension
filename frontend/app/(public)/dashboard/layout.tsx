@@ -37,14 +37,12 @@ export default function DashboardLayout({
       <TopBar role={role} onMenuClick={() => setSidebarOpen(true)} />
 
       {/* This row must be overflow-hidden so only <main> scrolls */}
-      <div className='flex flex-1 overflow-hidden min-h-0 pb-4'>
+      <div className='flex flex-1 overflow-hidden'>
         {/* Desktop sidebar — full height of this row */}
         <Sidebar role={role} open={sidebarOpen} onOpenChange={setSidebarOpen} />
 
         {/* Scrollable content area */}
-        <main className='md:ml-47.5 mt-12 flex-1 overflow-y-auto h-[calc(100vh-3rem)] p-4 md:p-6 scrollbar-thin'>
-          {children}
-        </main>
+        <main className='md:ml-47.5 mt-12 flex-1 p-4 md:p-6'>{children}</main>
       </div>
     </div>
   );
