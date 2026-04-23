@@ -43,7 +43,7 @@ export default function DeathsPage() {
         dormantCount={dormantCount}
       />
 
-      <div className='max-w-4xl mx-auto p-4'>
+      <div className='max-w-6xl mx-auto p-4'>
         {tab === "claims" && (
           <ClaimsTab
             claims={allClaims}

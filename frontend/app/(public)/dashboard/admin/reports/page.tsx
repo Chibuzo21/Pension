@@ -4,13 +4,11 @@ import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, statusBadge, biometricLevelBadge } from "@/lib/utils";
 import Link from "next/link";
-import { formatDistanceToNow, format, differenceInDays } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { useConvexUser } from "@/lib/useConvexUser";
-
 import {
   AlertTriangle,
   Clock,
@@ -18,12 +16,70 @@ import {
   Download,
   Mail,
   ChevronRight,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Id } from "@/convex/_generated/dataModel";
-import SummaryCard from "@/components/reports/SummaryCard";
 import { exportCSV } from "@/lib/utils";
+
+const STATUS_STYLES: Record<string, string> = {
+  active: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+  deceased: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
+  suspended: "bg-orange-50 text-orange-700 ring-1 ring-orange-200",
+  flagged: "bg-red-50 text-red-700 ring-1 ring-red-200",
+};
+
+const BIO_STYLES: Record<string, string> = {
+  L3: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+  L2: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+  L1: "bg-blue-50 text-blue-600 ring-1 ring-blue-200",
+  L0: "bg-slate-100 text-slate-500 ring-1 ring-slate-200",
+};
+
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  sub: string;
+  accent: "amber" | "red" | "green" | "purple" | "blue";
+}) {
+  const accentMap = {
+    amber: "bg-amber-50 text-amber-600",
+    red: "bg-red-50 text-red-600",
+    green: "bg-emerald-50 text-emerald-600",
+    purple: "bg-purple-50 text-purple-600",
+    blue: "bg-blue-50 text-blue-600",
+  };
+
+  return (
+    <div className='bg-white border border-smoke rounded-xl p-4 flex flex-col gap-3 min-w-0'>
+      <div className='flex items-center justify-between gap-2'>
+        <span className='text-[11px] font-medium text-slate truncate'>
+          {label}
+        </span>
+        <div
+          className={cn(
+            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+            accentMap[accent],
+          )}>
+          {icon}
+        </div>
+      </div>
+      <div>
+        <p className='text-2xl font-bold text-ink leading-none'>{value}</p>
+        <p className='text-[10px] text-slate mt-1'>{sub}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function ReportsPage() {
   const [threshold, setThreshold] = useState(37);
@@ -44,209 +100,225 @@ export default function ReportsPage() {
       sentByUserId: convexUserId as Id<"users">,
     });
     result.failed > 0
-      ? toast.warning(`${result.sent} reminders sent, ${result.failed} failed`)
-      : toast.success(`${result.sent} reminders sent successfully`);
+      ? toast.warning(`${result.sent} sent, ${result.failed} failed`)
+      : toast.success(`${result.sent} reminders sent`);
   };
 
   return (
-    <div className='space-y-4 sm:space-y-6'>
-      {/* Page header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
+    <div className='flex flex-col gap-5 p-4 sm:p-5 min-w-0'>
+      {/* Header */}
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
         <div>
-          <h2 className='text-base sm:text-lg font-semibold'>
-            Monthly Reports
-          </h2>
-          <p className='text-xs sm:text-sm text-muted-foreground mt-0.5'>
+          <h2 className='text-base font-bold text-ink'>Monthly Reports</h2>
+          <p className='text-[11px] text-slate mt-0.5'>
             {format(new Date(), "MMMM yyyy")} · Compliance overview
           </p>
         </div>
-        <Button
-          variant='outline'
-          size='sm'
+        <button
           onClick={() => exportCSV(overdue ?? [])}
           disabled={!overdue?.length}
-          className='w-full sm:w-auto'>
-          <Download className='h-3.5 w-3.5 mr-1.5' />
+          className='flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-smoke rounded-lg text-slate hover:text-ink hover:border-g1/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors self-start sm:self-auto'>
+          <Download className='h-3.5 w-3.5' />
           Export CSV
-        </Button>
+        </button>
       </div>
 
-      {/* Summary cards — 2 cols on mobile, 4 on lg */}
-      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4'>
-        <SummaryCard
-          icon={<AlertTriangle className='h-4 w-4 text-amber-500' />}
-          label='Overdue Pensioners'
+      {/* Stat cards */}
+      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 min-w-0'>
+        <StatCard
+          icon={<AlertTriangle className='h-3.5 w-3.5' />}
+          label='Overdue'
           value={isLoading ? "—" : (overdue?.length ?? 0).toLocaleString()}
-          sub='Not verified in 37+ days'
-          color='amber'
+          sub='Not verified 37+ days'
+          accent='amber'
         />
-        <SummaryCard
-          icon={<ShieldX className='h-4 w-4 text-red-500' />}
+        <StatCard
+          icon={<ShieldX className='h-3.5 w-3.5' />}
           label='Failed This Month'
           value={
             isLoading ? "—" : (stats?.failedThisMonth ?? 0).toLocaleString()
           }
           sub='Requires investigation'
-          color='red'
+          accent='red'
         />
-        <SummaryCard
-          icon={<Clock className='h-4 w-4 text-blue-500' />}
+        <StatCard
+          icon={<TrendingUp className='h-3.5 w-3.5' />}
           label='Verified This Month'
           value={
             isLoading ? "—" : (stats?.verifiedThisMonth ?? 0).toLocaleString()
           }
-          sub={`${stats?.complianceRate ?? 0}% compliance rate`}
-          color='green'
+          sub={`${stats?.complianceRate ?? 0}% compliance`}
+          accent='green'
         />
-        <SummaryCard
-          icon={<Mail className='h-4 w-4 text-purple-500' />}
+        <StatCard
+          icon={<Users className='h-3.5 w-3.5' />}
           label='Pending L0 Upgrade'
           value={isLoading ? "—" : (stats?.biometric.l0 ?? 0).toLocaleString()}
           sub='No biometrics enrolled'
-          color='purple'
+          accent='purple'
         />
       </div>
 
-      {/* Overdue table */}
-      <Card>
-        <CardHeader className='pb-3 pt-4 px-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between'>
-          <CardTitle className='text-sm flex items-center gap-2 flex-wrap'>
+      {/* Overdue table card */}
+      <div className='bg-white border border-smoke rounded-xl overflow-hidden min-w-0'>
+        {/* Card header */}
+        <div className='px-4 py-3 border-b border-smoke flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between'>
+          <div className='flex items-center gap-2 flex-wrap'>
             <AlertTriangle className='h-4 w-4 text-amber-500 shrink-0' />
-            <span>Not verified in</span>
+            <span className='text-sm font-semibold text-ink'>
+              Not verified in
+            </span>
             <input
               type='number'
               min={1}
               max={365}
               value={threshold}
               onChange={(e) => setThreshold(Number(e.target.value))}
-              className='w-14 text-sm border rounded px-1 py-0.5'
+              className='w-14 text-xs border border-smoke rounded-lg px-2 py-1 text-ink text-center focus:outline-none focus:ring-1 focus:ring-g1/40 focus:border-g1'
             />
-            <span>+ days</span>
-          </CardTitle>
+            <span className='text-sm font-semibold text-ink'>+ days</span>
+            {!isLoading && (
+              <span className='text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 ring-1 ring-amber-200 rounded-full font-semibold'>
+                {overdue?.length ?? 0} records
+              </span>
+            )}
+          </div>
 
           {!isLoading && (overdue?.length ?? 0) > 0 && (
-            <Button
+            <button
               onClick={handleReminders}
-              size='sm'
-              variant='outline'
-              className='h-7 text-xs w-full sm:w-auto'>
-              <Mail className='h-3 w-3 mr-1.5' />
+              className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-smoke rounded-lg text-slate hover:text-ink hover:border-g1/40 transition-colors self-start sm:self-auto shrink-0'>
+              <Mail className='h-3.5 w-3.5' />
               Send Reminders
-            </Button>
+            </button>
           )}
-        </CardHeader>
+        </div>
 
-        <CardContent className='px-4 pb-3'>
+        {/* Body */}
+        <div className='overflow-x-auto'>
           {isLoading ? (
-            <div className='space-y-2'>
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className='h-12 rounded-lg' />
+            <div className='flex flex-col gap-2 p-4'>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className='h-12 rounded-lg bg-smoke' />
               ))}
             </div>
           ) : !overdue || overdue.length === 0 ? (
-            <div className='text-center py-10 text-sm text-muted-foreground'>
-              🎉 No overdue pensioners — excellent compliance!
+            <div className='text-center py-14 text-sm text-slate'>
+              <div className='text-2xl mb-2'>🎉</div>
+              No overdue pensioners — excellent compliance!
             </div>
           ) : (
-            <div className='overflow-x-auto -mx-4 px-4'>
-              <table className='w-full text-sm min-w-[480px]'>
-                <thead>
-                  <tr className='border-b'>
-                    <th className='text-left text-xs font-semibold text-muted-foreground pb-2 pr-4'>
-                      Pensioner
+            <table className='w-full text-xs min-w-[540px]'>
+              <thead>
+                <tr className='bg-g1'>
+                  {[
+                    "Pensioner",
+                    "MDA",
+                    "Status",
+                    "Bio Level",
+                    "Last Verified",
+                    "",
+                  ].map((h, i) => (
+                    <th
+                      key={i}
+                      className={cn(
+                        "px-4 py-2.5 text-left text-[9px] font-semibold uppercase tracking-wider text-white/80 whitespace-nowrap",
+                        i === 1 && "hidden md:table-cell",
+                        i === 3 && "hidden lg:table-cell",
+                      )}>
+                      {h}
                     </th>
-                    <th className='text-left text-xs font-semibold text-muted-foreground pb-2 pr-4 hidden md:table-cell'>
-                      MDA
-                    </th>
-                    <th className='text-left text-xs font-semibold text-muted-foreground pb-2 pr-4'>
-                      Status
-                    </th>
-                    <th className='text-left text-xs font-semibold text-muted-foreground pb-2 pr-4 hidden lg:table-cell'>
-                      Bio Level
-                    </th>
-                    <th className='text-left text-xs font-semibold text-muted-foreground pb-2'>
-                      Last Verified
-                    </th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody className='divide-y divide-border/60'>
-                  {overdue.map((p) => (
-                    <tr key={p._id} className='table-row-hover'>
-                      <td className='py-3 pr-4'>
-                        <div className='flex items-center gap-2.5'>
-                          <div className='w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-bold shrink-0'>
-                            {p.fullName
-                              .split(" ")
-                              .slice(0, 2)
-                              .map((n: string) => n[0])
-                              .join("")}
-                          </div>
-                          <div>
-                            <p className='font-medium text-xs'>{p.fullName}</p>
-                            <p className='text-[10px] font-mono text-muted-foreground'>
-                              {p.pensionId}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className='py-3 pr-4 hidden md:table-cell'>
-                        <p className='text-xs truncate max-w-40'>
-                          {p.lastMda ?? "—"}
-                        </p>
-                      </td>
-                      <td className='py-3 pr-4'>
-                        <span
-                          className={cn(
-                            "text-xs font-medium px-2 py-0.5 rounded-full border",
-                            statusBadge(p.status),
-                          )}>
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className='py-3 pr-4 hidden lg:table-cell'>
-                        <span
-                          className={cn(
-                            "text-xs font-bold px-2 py-0.5 rounded-md border",
-                            biometricLevelBadge(p.biometricLevel),
-                          )}>
-                          {p.biometricLevel}
-                        </span>
-                      </td>
-                      <td className='py-3'>
-                        <p className='text-xs text-amber-600 font-medium flex items-center gap-1'>
-                          <Clock className='h-3 w-3 shrink-0' />
-                          <span className='truncate'>
-                            {p.lastVerification
-                              ? formatDistanceToNow(
-                                  new Date(p.lastVerification.verificationDate),
-                                  { addSuffix: true },
-                                )
-                              : "Never verified"}
-                          </span>
-                        </p>
-                      </td>
-                      <td className='py-3 pl-2'>
-                        <Button
-                          variant='ghost'
-                          size='sm'
-                          className='h-7 text-xs'
-                          asChild>
-                          <Link
-                            href={`/dashboard/admin/pensioners/${p._id}/verify`}>
-                            <span className='hidden sm:inline'>Verify</span>
-                            <ChevronRight className='ml-0 sm:ml-1 h-3 w-3' />
-                          </Link>
-                        </Button>
-                      </td>
-                    </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </tr>
+              </thead>
+              <tbody>
+                {overdue.map((p, idx) => (
+                  <tr
+                    key={p._id}
+                    className={cn(
+                      "border-b border-smoke transition-colors hover:bg-[#f0faf0]",
+                      idx % 2 === 0 ? "bg-white" : "bg-offwhite/50",
+                    )}>
+                    {/* Pensioner */}
+                    <td className='px-4 py-3'>
+                      <div className='flex items-center gap-2.5'>
+                        <div className='w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-[9px] font-bold shrink-0'>
+                          {p.fullName
+                            .split(" ")
+                            .slice(0, 2)
+                            .map((n: string) => n[0])
+                            .join("")}
+                        </div>
+                        <div className='min-w-0'>
+                          <p className='font-semibold text-[11px] text-ink truncate'>
+                            {p.fullName}
+                          </p>
+                          <p className='text-[10px] font-mono text-slate'>
+                            {p.pensionId}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* MDA */}
+                    <td className='px-4 py-3 hidden md:table-cell'>
+                      <span className='text-[11px] text-slate truncate max-w-[120px] block'>
+                        {p.lastMda ?? "—"}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td className='px-4 py-3'>
+                      <span
+                        className={cn(
+                          "inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold capitalize",
+                          STATUS_STYLES[p.status] ??
+                            "bg-slate-100 text-slate-600",
+                        )}>
+                        {p.status}
+                      </span>
+                    </td>
+
+                    {/* Bio level */}
+                    <td className='px-4 py-3 hidden lg:table-cell'>
+                      <span
+                        className={cn(
+                          "inline-block px-2 py-0.5 rounded-full text-[9px] font-bold",
+                          BIO_STYLES[p.biometricLevel ?? "L0"],
+                        )}>
+                        {p.biometricLevel ?? "L0"}
+                      </span>
+                    </td>
+
+                    {/* Last verified */}
+                    <td className='px-4 py-3'>
+                      <span className='text-[10px] text-amber-600 font-medium flex items-center gap-1'>
+                        <Clock className='h-3 w-3 shrink-0' />
+                        {p.lastVerification
+                          ? formatDistanceToNow(
+                              new Date(p.lastVerification.verificationDate),
+                              { addSuffix: true },
+                            )
+                          : "Never verified"}
+                      </span>
+                    </td>
+
+                    {/* Action */}
+                    <td className='px-4 py-3'>
+                      <Link
+                        href={`/dashboard/admin/pensioners/${p._id}/verify`}
+                        className='flex items-center gap-0.5 text-[10px] font-semibold text-g1 hover:underline whitespace-nowrap'>
+                        Verify
+                        <ChevronRight className='h-3 w-3' />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
