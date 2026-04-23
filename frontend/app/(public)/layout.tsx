@@ -7,7 +7,7 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className='h-screen overflow-y-auto'>
+    <div className='min-h-full overflow-y-auto'>
       <div className='fixed bottom-5 left-1/2 -translate-x-1/2 z-50'>
         <NavPills />
       </div>
