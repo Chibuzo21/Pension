@@ -31,7 +31,6 @@ export default function VoiceEnrolWidget({
 }: Props) {
   const { convexUserId } = useConvexUser();
   const updateBiometric = useMutation(api.pensioners.updateBiometric);
-
   const [stage, setStage] = useState<Stage>("ready");
   const [error, setError] = useState("");
 
@@ -54,9 +53,8 @@ export default function VoiceEnrolWidget({
           body: JSON.stringify({ audioList, mode: "enrol" }),
         });
         const data = await apiRes.json();
-        if (!apiRes.ok || !data.embedding) {
+        if (!apiRes.ok || !data.embedding)
           throw new Error(data.error ?? "Enrolment failed");
-        }
 
         await updateBiometric({
           id: pensionerId as Id<"pensioners">,
@@ -85,36 +83,42 @@ export default function VoiceEnrolWidget({
     setError("");
   }
 
+  const ninLength = takes.length;
+
   return (
-    <div className='card'>
-      <div className='ch'>
-        <div className='ct'>🎙️ Record Voiceprint</div>
+    <div className='bg-white border border-mist rounded-[11px] shadow-[0_1px_5px_rgba(0,50,0,0.07)] overflow-hidden'>
+      {/* Header */}
+      <div className='bg-[g1 px-4 py-3 flex items-center gap-2'>
+        <span className='text-white text-[13px] font-bold'>
+          🎙️ Record Voiceprint
+        </span>
       </div>
-      <div className='cb'>
-        {/* Passphrase */}
-        <p className='mb-2 text-mist-950 text-[11px]'>
+
+      {/* Body */}
+      <div className='p-4 space-y-4'>
+        <p className='text-[11px] text-slate'>
           Ask the pensioner to say clearly:
         </p>
-        <div className='bg-smoke text-ink text-center font-mono text-[13px] py-3 px-4 rounded-md mb-5 italic'>
+        <div className='bg-smoke text-ink text-center font-mono text-[13px] py-3 px-4 rounded-lg italic'>
           "{PASSPHRASE}"
         </div>
 
-        {/* Take progress pills */}
-        <div className='flex gap-2 mb-5'>
+        {/* Take progress */}
+        <div className='flex gap-1.5'>
           {Array.from({ length: takesRequired }).map((_, i) => (
             <div
               key={i}
-              className={`flex-1 h-2 rounded-full transition-all ${
+              className={`flex-1 h-1.5 rounded-full transition-all duration-150 ${
                 i < takes.length
-                  ? "bg-green-500"
+                  ? "bg-g1"
                   : i === takes.length && recording
-                    ? "bg-red-400 animate-pulse"
-                    : "bg-muted"
+                    ? "bg-red animate-pulse"
+                    : "bg-mist"
               }`}
             />
           ))}
         </div>
-        <p className='text-[11px] text-muted-foreground text-center mb-4'>
+        <p className='text-[11px] text-slate text-center'>
           {takes.length < takesRequired
             ? `Take ${currentTake} of ${takesRequired}`
             : "All takes recorded"}
@@ -123,34 +127,29 @@ export default function VoiceEnrolWidget({
         {/* Ready / failed */}
         {(stage === "ready" || stage === "failed") && !done && (
           <>
-            <div className='voice-box mb-4'>
-              <span className='mic-icon'>🎙️</span>
+            <div className='border-2 border-dashed border-[var(--mist)] rounded-[9px] p-5 text-center'>
+              <span className='text-[40px] block mb-2'>🎙️</span>
               {stage === "failed" && (
-                <p
-                  style={{
-                    fontWeight: 700,
-                    color: "var(--red)",
-                    marginBottom: 8,
-                  }}>
+                <p className='text-[var(--red)] font-bold text-[12px] mb-3'>
                   {error}
                 </p>
               )}
-              <p className='text-[12px] text-muted-foreground'>
+              <p className='text-[12px] text-[var(--slate)]'>
                 {takes.length === 0
                   ? "Click Record for Take 1. The pensioner speaks the passphrase each time."
                   : `${takes.length} take${takes.length > 1 ? "s" : ""} done — click Record for Take ${currentTake}.`}
               </p>
             </div>
             <button
-              className='btn-p w-full'
               onClick={recordTake}
-              disabled={recording}>
+              disabled={recording}
+              className='w-full bg-[var(--gold)] hover:bg-[var(--gold2)] text-black font-bold text-[13px] py-2.5 rounded-[8px] transition-all duration-150 hover:-translate-y-px active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed'>
               🔴 Record Take {currentTake} (6s)
             </button>
             {takes.length > 0 && (
               <button
-                className='btn-sm boutline w-full mt-2'
-                onClick={handleRetry}>
+                onClick={handleRetry}
+                className='w-full mt-2 bg-transparent border border-[var(--mist)] text-[var(--slate)] hover:border-[var(--g1)] hover:text-[var(--g1)] text-[11px] font-semibold py-1.5 rounded-[7px] transition-all duration-150'>
                 ↺ Start Over
               </button>
             )}
@@ -159,15 +158,24 @@ export default function VoiceEnrolWidget({
 
         {/* Recording */}
         {recording && (
-          <div className='voice-box rec'>
-            <span className='mic-icon'>🔴</span>
-            <div className='waveform active'>
+          <div className='border-2 border-[var(--red)] bg-[#fff5f5] rounded-[9px] p-5 text-center'>
+            <span className='text-[40px] block mb-2'>🔴</span>
+            <div className='flex items-center justify-center gap-1.5 h-7 my-3'>
               {[...Array(5)].map((_, i) => (
-                <div key={i} className='wbar' />
+                <div
+                  key={i}
+                  className='w-1 rounded-full bg-[var(--red)] animate-[wave_0.8s_ease-in-out_infinite]'
+                  style={{
+                    animationDelay: `${[0, 0.1, 0.2, 0.15, 0.05][i]}s`,
+                    height: 5,
+                  }}
+                />
               ))}
             </div>
-            <div className='vtimer'>{countdown}</div>
-            <p className='text-[12px] text-red mt-2'>
+            <div className='text-[var(--red)] font-black text-[28px] leading-none mb-2'>
+              {countdown}
+            </div>
+            <p className='text-[12px] text-[var(--red)] font-medium'>
               Recording Take {currentTake}… ask pensioner to speak now
             </p>
           </div>
@@ -175,12 +183,12 @@ export default function VoiceEnrolWidget({
 
         {/* Processing */}
         {stage === "processing" && (
-          <div className='voice-box mb-4'>
-            <span className='mic-icon'>⏳</span>
-            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+          <div className='border-2 border-dashed border-[var(--mist)] rounded-[9px] p-5 text-center'>
+            <span className='text-[40px] block mb-2'>⏳</span>
+            <p className='font-bold text-[14px] text-[var(--ink)] mb-1'>
               Building voiceprint from {takesRequired} samples…
             </p>
-            <p style={{ fontSize: 11, color: "var(--muted)" }}>
+            <p className='text-[11px] text-[var(--slate)]'>
               Averaging embeddings for best accuracy
             </p>
           </div>
@@ -188,12 +196,12 @@ export default function VoiceEnrolWidget({
 
         {/* Done */}
         {stage === "done" && (
-          <div className='voice-box ok'>
-            <span className='mic-icon'>✅</span>
-            <p className='text-g1 font-semibold mb-2 text-[14px]'>
+          <div className='border-2 border-[var(--g1)] bg-[#f0faf0] rounded-[9px] p-5 text-center'>
+            <span className='text-[40px] block mb-2'>✅</span>
+            <p className='text-[var(--g1)] font-semibold text-[14px] mb-1.5'>
               Voice Enrolled!
             </p>
-            <p className='text-muted text-[11px]'>
+            <p className='text-[11px] text-slate'>
               {pensioner.fullName}'s voiceprint ({takesRequired} samples
               averaged) has been stored for future verification.
             </p>

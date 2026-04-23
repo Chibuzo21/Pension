@@ -43,7 +43,7 @@ export function LivenessViewFinder({
       {faceStatus === "capturing" && (
         <div className='absolute bottom-3 inset-x-3 space-y-2'>
           <p className='text-white text-sm text-center font-medium drop-shadow'>
-            Stay still — capturing liveness frames…
+            Slowly turn your head left and right while we capture
           </p>
           <div className='flex gap-1'>
             {Array.from({ length: LIVENESS_FRAME_COUNT }).map((_, i) => (

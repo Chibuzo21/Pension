@@ -1,7 +1,14 @@
 fastapi
-uvicorn
+uvicorn[standard]
 speechbrain
 torchaudio
 torch
 pydantic
 python-multipart
+insightface
+faster-whisper
+onnxruntime
+opencv-python-headless
+soundfile
+numpy
+inflect

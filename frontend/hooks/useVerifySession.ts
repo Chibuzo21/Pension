@@ -33,7 +33,6 @@ export function useVerifySession() {
     setResults({ ...resultsRef.current });
   }
 
-  // ── Sub-hooks ─────────────────────────────────────────────────────────────
   const face = useFaceVerify({
     pensionerFaceEncoding: pensioner?.faceEncoding ?? undefined,
     onResult: (result) => updateResults({ face: result }),

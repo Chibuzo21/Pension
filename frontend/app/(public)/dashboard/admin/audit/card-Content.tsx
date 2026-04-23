@@ -13,72 +13,95 @@ function formatAction(action: string) {
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
 const tableHeaders = ["Timestamp", "User", "Action", "Details", "IP Address"];
+
 export default function AuditContent() {
   const logs = useQuery(api.users.getAuditLogs, { limit: 200 });
+
   return (
     <CardContent className='px-0 pb-0'>
       <div className='overflow-x-auto'>
-        <table className='w-full text-sm'>
+        <table className='w-full border-collapse text-sm'>
           <thead>
-            <tr className='border-b bg-muted/30'>
+            <tr>
               {tableHeaders.map((header) => (
                 <th
                   key={header}
-                  id={header}
-                  className='text-left text-xs font-semibold text-muted-foreground px-4 py-2.5'>
+                  className='bg-[var(--g1)] text-white text-left text-[9px] font-semibold tracking-[0.4px] uppercase px-4 py-2.5 first:rounded-tl-none last:rounded-tr-none'>
                   {header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className='divide-y divide-border/60'>
+
+          <tbody>
             {logs === undefined
               ? [...Array(10)].map((_, i) => (
-                  <tr key={i}>
-                    {[...Array(4)].map((_, j) => (
+                  <tr key={i} className='border-b border-[var(--smoke)]'>
+                    {[...Array(5)].map((_, j) => (
                       <td key={j} className='px-4 py-3'>
-                        <Skeleton className='h-3.5 w-full' />
+                        <Skeleton className='h-3 w-full rounded-md bg-[var(--smoke)] animate-pulse' />
                       </td>
                     ))}
                   </tr>
                 ))
-              : logs.map((log) => (
+              : logs.map((log, idx) => (
                   <tr
                     key={log._id}
-                    className='hover:bg-muted/30 transition-colors'>
+                    className={cn(
+                      "border-b border-[var(--smoke)] transition-colors duration-100",
+                      idx % 2 === 0 ? "bg-white" : "bg-[var(--offwhite)]",
+                      "hover:bg-[#f0faf0]",
+                    )}>
+                    {/* Timestamp */}
                     <td className='px-4 py-3 whitespace-nowrap'>
-                      <p className='text-xs font-mono text-muted-foreground'>
+                      <span className='font-mono text-[10px] text-[var(--slate)]'>
                         {format(
                           new Date(log._creationTime),
                           "dd MMM · HH:mm:ss",
                         )}
-                      </p>
+                      </span>
                     </td>
+
+                    {/* User */}
                     <td className='px-4 py-3'>
-                      <p className='text-xs font-medium'>
-                        {log.user?.username ?? log.username ?? "System"}
-                      </p>
+                      <div className='flex items-center gap-2'>
+                        <div className='w-5 h-5 rounded-md bg-[var(--g1)] text-white text-[9px] font-bold flex items-center justify-center shrink-0'>
+                          {(log.user?.username ??
+                            log.username ??
+                            "S")[0].toUpperCase()}
+                        </div>
+                        <span className='text-[11px] font-medium text-[var(--ink)]'>
+                          {log.user?.username ?? log.username ?? "System"}
+                        </span>
+                      </div>
                     </td>
+
+                    {/* Action badge */}
                     <td className='px-4 py-3'>
                       <span
                         className={cn(
-                          "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                          "inline-block text-[9px] font-bold px-2 py-0.5 rounded-[8px] uppercase tracking-[0.3px]",
                           ACTION_COLORS[log.action] ??
-                            "text-gray-600 bg-gray-100",
+                            "bg-[#f1f5f9] text-[#475569]",
                         )}>
                         {formatAction(log.action)}
                       </span>
                     </td>
-                    <td className='px-4 py-3 hidden md:table-cell'>
-                      <p className='text-xs text-muted-foreground truncate max-w-70'>
+
+                    {/* Details */}
+                    <td className='px-4 py-3 hidden md:table-cell max-w-[260px]'>
+                      <p className='text-[10.5px] text-[var(--slate)] truncate'>
                         {log.details ?? "—"}
                       </p>
                     </td>
+
+                    {/* IP */}
                     <td className='px-4 py-3 hidden lg:table-cell'>
-                      <p className='text-xs font-mono text-muted-foreground'>
+                      <span className='font-mono text-[10px] text-[var(--slate)]'>
                         {log.ipAddress ?? "—"}
-                      </p>
+                      </span>
                     </td>
                   </tr>
                 ))}
