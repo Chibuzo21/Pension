@@ -157,7 +157,7 @@ export function Sidebar({ role }: SidebarProps) {
       <div className='lg:hidden'>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <button className='flex cursor-pointer items-center justify-center w-9 h-9 rounded-lg bg-[#003311] border border-white/10 text-white/70 hover:text-white transition-colors'>
+            <button className='fixed z-50 left-4 top-14 flex cursor-pointer items-center justify-center w-9 h-9 rounded-lg bg-[#003311] border border-white/10 text-white/70 hover:text-white transition-colors'>
               <Menu size={16} />
             </button>
           </SheetTrigger>

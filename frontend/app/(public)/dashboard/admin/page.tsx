@@ -15,7 +15,7 @@ export default function AdminDashboardPage() {
   const s = stats;
 
   return (
-    <div className='p-5 overflow-y-auto max-h-[calc(100vh-50px)] overflow-x-hidden'>
+    <div className='md:p-5 p-2 overflow-y-auto max-h-[calc(100vh-50px)] overflow-x-hidden'>
       <div className='flex items-start justify-between mb-4 mt-2'>
         <div>
           <div className='text-2xl font-bold text-ink leading-tight'>
@@ -36,7 +36,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stat row 1 */}
-      <div className='grid lg:grid-cols-4 sm:grid-cols-2 grid-cols-1 gap-3 mb-3'>
+      <div className='grid lg:grid-cols-4 grid-cols-2 gap-3 mb-3'>
         <SC
           label='Total Pensioners'
           val={s?.total}
@@ -66,7 +66,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stat row 2 */}
-      <div className='grid  lg:grid-cols-4 sm:grid-cols-2 grid-cols-1 gap-3 mb-3'>
+      <div className='grid  lg:grid-cols-4 grid-cols-2 gap-3 mb-3'>
         <SC
           label='Active Pensioners'
           val={s?.active}

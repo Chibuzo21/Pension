@@ -77,7 +77,7 @@ export default function PensionersPage() {
       </div>
 
       {/* Table */}
-      <div className='flex-1 overflow-auto px-5 py-3.5'>
+      <div className='flex-1 overflow-auto md:px-5 px-2 py-3.5'>
         <div className='bg-white border border-mist rounded-[11px] overflow-hidden shadow-sm'>
           <div className='overflow-x-auto'>
             <table className='w-full border-collapse text-xs'>

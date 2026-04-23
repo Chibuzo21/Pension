@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 export type Tab = "claims" | "dormant" | "deceased";
 
 interface TabBarProps {
@@ -34,35 +36,22 @@ export function TabBar({
   dormantCount,
 }: TabBarProps) {
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderBottom: "1px solid var(--mist)",
-        padding: "0 20px",
-        display: "flex",
-        gap: 0,
-      }}>
-      {TABS.map(({ key, label }) => (
-        <button
-          key={key}
-          onClick={() => onTabChange(key)}
-          style={{
-            padding: "10px 16px",
-            fontSize: 12,
-            fontWeight: activeTab === key ? 700 : 400,
-            color: activeTab === key ? "var(--g1)" : "var(--muted)",
-            background: "none",
-            border: "none",
-            borderBottom:
+    <div className='bg-white border-b border-border overflow-x-auto scrollbar-none'>
+      <div className='flex min-w-max px-4 sm:px-5'>
+        {TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => onTabChange(key)}
+            className={cn(
+              "px-3 sm:px-4 py-2.5 text-[11px] sm:text-xs whitespace-nowrap font-medium border-b-2 transition-colors cursor-pointer bg-transparent",
               activeTab === key
-                ? "2px solid var(--g1)"
-                : "2px solid transparent",
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}>
-          {label({ pendingCount, dormantCount })}
-        </button>
-      ))}
+                ? "border-primary text-primary font-bold"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}>
+            {label({ pendingCount, dormantCount })}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

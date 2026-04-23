@@ -71,7 +71,7 @@ export function RecentVerificationsTable({
               <tr>
                 <td
                   colSpan={6}
-                  className='text-center text-muted py-4.5 px-2.5'>
+                  className='text-center text-muted-foreground py-4.5 px-2.5'>
                   No verifications yet
                 </td>
               </tr>

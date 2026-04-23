@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function CrisisPage() {
-  const router = useRouter();
-
   return (
     <div className='min-h-screen bg-[#001a08] text-white pb-20'>
       {/* Header */}
@@ -16,7 +14,7 @@ export default function CrisisPage() {
       </div>
 
       {/* Main content */}
-      <div className='px-11 py-9 max-w-5xl mx-auto'>
+      <div className='md:px-11 px-6 py-9 max-w-5xl mx-auto'>
         <h1 className='text-4xl font-bold mb-2'>
           The <em className='text-gold2 italic'>Pension Fraud</em> Crisis & Our
           Complete Solution
@@ -28,7 +26,7 @@ export default function CrisisPage() {
         </p>
 
         {/* Problem cards grid */}
-        <div className='grid lg:grid-cols-3 sm:grid-cols-2 gap-3.5 mb-8'>
+        <div className='flex flex-wrap gap-3.5 mb-8'>
           <div className='bg-white/6 border border-white/8 rounded-xl p-5.5 relative overflow-hidden'>
             <div className='absolute top-0 left-0 right-0 h-0.75 bg-red' />
             <div className='text-5xl font-extrabold text-red mb-1'>20%</div>
@@ -75,7 +73,7 @@ export default function CrisisPage() {
             compliance, ghost elimination, and complete audit trails.
           </p>
 
-          <div className='grid grid-cols-4 gap-2.5 mt-3'>
+          <div className='grid md:grid-cols-4 grid-cols-2 gap-2.5 mt-3'>
             {[
               {
                 icon: "📷",
@@ -112,7 +110,7 @@ export default function CrisisPage() {
             ))}
           </div>
 
-          <div className='bg-(--gold)/18 border border-(--gold)/30 rounded-lg p-3 mt-3 text-center'>
+          <div className='bg-(--gold)/18 border border-(--gold)/30 rounded-lg md:p-3 p-1.5 mt-3 text-center'>
             <div className='text-xs font-bold text-gold2'>
               💰 BPMLVS v2.0: ₦120M/year flat fee — unlimited verifications, all
               3 modalities
@@ -121,7 +119,7 @@ export default function CrisisPage() {
         </div>
 
         {/* Key benefits */}
-        <div className='grid grid-cols-2 gap-4 mb-8'>
+        <div className='grid md:grid-cols-2 gap-4 mb-8'>
           <div>
             <div className='text-base font-bold mb-3 text-gold2'>
               📊 Immediate Impact
@@ -187,14 +185,14 @@ export default function CrisisPage() {
         </div>
 
         {/* CTA */}
-        <div className='flex gap-3 justify-center'>
+        <div className='flex flex-col md:flex-row gap-3 justify-center'>
           <Link href='/dashboard/admin'>
-            <button className='bg-gold text-g3 text-sm font-bold px-6 py-2.75 rounded-lg hover:bg-gold2 transition-colors'>
+            <button className='bg-gold text-g3 text-sm font-bold px-6 py-2.75 rounded-lg hover:bg-gold2 transition-colors w-full'>
               📊 View Full Demo Dashboard
             </button>
           </Link>
           <Link href='/dashboard/admin/reports'>
-            <button className='bg-white/10 text-white text-sm font-bold px-6 py-2.75 rounded-lg hover:bg-white/20 transition-colors border border-white/20'>
+            <button className='bg-white/10 text-white text-sm font-bold px-6 py-2.75 rounded-lg hover:bg-white/20 transition-colors border border-white/20 w-full'>
               📈 See Analytics & Reports
             </button>
           </Link>

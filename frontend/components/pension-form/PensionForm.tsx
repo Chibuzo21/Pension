@@ -40,7 +40,7 @@ export function PensionerForm({
     <form
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      className='max-w-3xl mx-auto space-y-5 pb-10'>
+      className='max-w-4xl mx-auto space-y-5 pb-10'>
       {/* ── Header ── */}
       <div className='flex items-center gap-3'>
         <Button

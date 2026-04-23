@@ -26,17 +26,15 @@ import SummaryCard from "@/components/reports/SummaryCard";
 import { exportCSV } from "@/lib/utils";
 
 export default function ReportsPage() {
-  // const overdue = useQuery(api.verification.getOverdue, { daysThreshold: 37 });
   const [threshold, setThreshold] = useState(37);
-
   const { convexUserId } = useConvexUser();
-
   const overdue = useQuery(api.verification.getOverdue, {
     daysThreshold: threshold,
   });
   const stats = useQuery(api.pensioners.getStats);
-
   const sendReminders = useAction(api.notifications.sendBulkReminders);
+  const isLoading = overdue === undefined;
+
   const handleReminders = async () => {
     const ids = overdue!.map((p) => p._id);
     const result = await sendReminders({
@@ -45,22 +43,20 @@ export default function ReportsPage() {
         "Your pension verification is overdue. Please visit your nearest MDA office to complete verification and continue receiving your pension.",
       sentByUserId: convexUserId as Id<"users">,
     });
-
-    if (result.failed > 0) {
-      toast.warning(`${result.sent} reminders sent, ${result.failed} failed`);
-    } else {
-      toast.success(`${result.sent} reminders sent successfully`);
-    }
+    result.failed > 0
+      ? toast.warning(`${result.sent} reminders sent, ${result.failed} failed`)
+      : toast.success(`${result.sent} reminders sent successfully`);
   };
 
-  const isLoading = overdue === undefined;
-
   return (
-    <div className='space-y-6'>
-      <div className='flex items-center justify-between'>
+    <div className='space-y-4 sm:space-y-6'>
+      {/* Page header */}
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
         <div>
-          <h2 className='text-lg font-semibold'>Monthly Reports</h2>
-          <p className='text-sm text-muted-foreground mt-0.5'>
+          <h2 className='text-base sm:text-lg font-semibold'>
+            Monthly Reports
+          </h2>
+          <p className='text-xs sm:text-sm text-muted-foreground mt-0.5'>
             {format(new Date(), "MMMM yyyy")} · Compliance overview
           </p>
         </div>
@@ -68,14 +64,15 @@ export default function ReportsPage() {
           variant='outline'
           size='sm'
           onClick={() => exportCSV(overdue ?? [])}
-          disabled={!overdue?.length}>
+          disabled={!overdue?.length}
+          className='w-full sm:w-auto'>
           <Download className='h-3.5 w-3.5 mr-1.5' />
           Export CSV
         </Button>
       </div>
 
-      {/* Summary cards */}
-      <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
+      {/* Summary cards — 2 cols on mobile, 4 on lg */}
+      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4'>
         <SummaryCard
           icon={<AlertTriangle className='h-4 w-4 text-amber-500' />}
           label='Overdue Pensioners'
@@ -110,37 +107,35 @@ export default function ReportsPage() {
         />
       </div>
 
-      {/* Overdue pensioners table */}
+      {/* Overdue table */}
       <Card>
-        <CardHeader className='pb-3 pt-4 px-4 flex flex-row items-center justify-between'>
-          <CardTitle className='text-sm flex items-center gap-2'>
-            <AlertTriangle className='h-4 w-4 text-amber-500' />
-            <div className='flex items-center gap-2'>
-              <p>Not verified in</p>
-
-              <input
-                type='number'
-                min={1}
-                max={365}
-                value={threshold}
-                onChange={(e) => setThreshold(Number(e.target.value))}
-                className='w-14 text-sm border rounded px-1 py-0.5'
-              />
-
-              <p>+ days</p>
-            </div>
+        <CardHeader className='pb-3 pt-4 px-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between'>
+          <CardTitle className='text-sm flex items-center gap-2 flex-wrap'>
+            <AlertTriangle className='h-4 w-4 text-amber-500 shrink-0' />
+            <span>Not verified in</span>
+            <input
+              type='number'
+              min={1}
+              max={365}
+              value={threshold}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+              className='w-14 text-sm border rounded px-1 py-0.5'
+            />
+            <span>+ days</span>
           </CardTitle>
+
           {!isLoading && (overdue?.length ?? 0) > 0 && (
             <Button
               onClick={handleReminders}
               size='sm'
               variant='outline'
-              className='h-7 text-xs'>
+              className='h-7 text-xs w-full sm:w-auto'>
               <Mail className='h-3 w-3 mr-1.5' />
               Send Reminders
             </Button>
           )}
         </CardHeader>
+
         <CardContent className='px-4 pb-3'>
           {isLoading ? (
             <div className='space-y-2'>
@@ -153,8 +148,8 @@ export default function ReportsPage() {
               🎉 No overdue pensioners — excellent compliance!
             </div>
           ) : (
-            <div className='overflow-x-auto'>
-              <table className='w-full text-sm'>
+            <div className='overflow-x-auto -mx-4 px-4'>
+              <table className='w-full text-sm min-w-[480px]'>
                 <thead>
                   <tr className='border-b'>
                     <th className='text-left text-xs font-semibold text-muted-foreground pb-2 pr-4'>
@@ -220,13 +215,15 @@ export default function ReportsPage() {
                       </td>
                       <td className='py-3'>
                         <p className='text-xs text-amber-600 font-medium flex items-center gap-1'>
-                          <Clock className='h-3 w-3' />
-                          {p.lastVerification
-                            ? formatDistanceToNow(
-                                new Date(p.lastVerification.verificationDate),
-                                { addSuffix: true },
-                              )
-                            : "Never verified"}
+                          <Clock className='h-3 w-3 shrink-0' />
+                          <span className='truncate'>
+                            {p.lastVerification
+                              ? formatDistanceToNow(
+                                  new Date(p.lastVerification.verificationDate),
+                                  { addSuffix: true },
+                                )
+                              : "Never verified"}
+                          </span>
                         </p>
                       </td>
                       <td className='py-3 pl-2'>
@@ -237,7 +234,8 @@ export default function ReportsPage() {
                           asChild>
                           <Link
                             href={`/dashboard/admin/pensioners/${p._id}/verify`}>
-                            Verify <ChevronRight className='ml-1 h-3 w-3' />
+                            <span className='hidden sm:inline'>Verify</span>
+                            <ChevronRight className='ml-0 sm:ml-1 h-3 w-3' />
                           </Link>
                         </Button>
                       </td>

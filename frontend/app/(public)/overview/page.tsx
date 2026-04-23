@@ -104,7 +104,7 @@ export default function CoverPage() {
         </div>
 
         {/* Version badge */}
-        <div className='bg-[#c8960c]/[0.18] border border-[#c8960c]/35 text-[#e6ad0e] text-[9px] font-bold tracking-[1.2px] uppercase px-3 py-1.5 rounded-full'>
+        <div className='bg-[#c8960c]/18 border border-[#c8960c]/35 text-[#e6ad0e] text-[9px] font-bold tracking-[1.2px] uppercase px-3 py-1.5 rounded-full'>
           v2.0 · Multi-Modal · 2025
         </div>
       </header>
@@ -112,7 +112,7 @@ export default function CoverPage() {
       {/* ── Hero ── */}
       <main
         ref={heroRef}
-        className='relative z-10 flex-1 flex flex-col items-center justify-center text-center px-10 py-8'>
+        className='relative z-10 flex-1 flex flex-col items-center justify-center text-center md:px-10 py-8 px-5'>
         {/* Live eyebrow pill */}
         <div className='flex items-center gap-2 bg-[#c8960c]/[0.13] border border-[#c8960c]/30 text-[#e6ad0e] text-[9px] font-bold tracking-[2px] uppercase px-4 py-1.5 rounded-full mb-5'>
           <span className='w-1.5 h-1.5 rounded-full bg-[#e6ad0e] animate-pulse' />
@@ -148,7 +148,7 @@ export default function CoverPage() {
         </div>
 
         {/* Stats bar */}
-        <div className='flex w-full max-w-[680px] mb-7 bg-white/[0.05] border border-white/[0.08] rounded-xl overflow-hidden'>
+        <div className='flex w-full max-w-[680px] mb-7 bg-white/[0.05] border border-white/[0.08] rounded-xl'>
           <StatBlock
             value={
               <>
@@ -163,9 +163,9 @@ export default function CoverPage() {
         </div>
 
         {/* CTA buttons */}
-        <div className='flex gap-3 flex-wrap justify-center mb-5'>
+        <div className='flex gap-3 flex-col md:flex-row justify-center mb-5'>
           <Link href='/crisis'>
-            <Button className='bg-[#c8960c] hover:bg-[#e6ad0e] text-black font-bold px-6 py-3 h-auto text-[13px] rounded-lg transition-all hover:-translate-y-px shadow-lg shadow-[#c8960c]/20'>
+            <Button className='bg-[#c8960c] hover:bg-[#e6ad0e] text-black font-bold px-6 py-3 h-auto text-[13px] rounded-lg transition-all hover:-translate-y-px shadow-lg shadow-[#c8960c]/20 w-full'>
               <BarChart2 size={15} className='mr-2' />
               📊 See the Crisis
             </Button>
@@ -173,7 +173,7 @@ export default function CoverPage() {
           <Link href='/dashboard/portal/verify'>
             <Button
               variant='outline'
-              className='bg-transparent border border-white/20 text-white/75 hover:bg-white/[0.07] hover:text-white hover:border-white font-semibold px-6 py-3 h-auto text-[13px] rounded-lg'>
+              className='bg-transparent w-full border border-white/20 text-white/75 hover:bg-white/[0.07] hover:text-white hover:border-white font-semibold px-6 py-3 h-auto text-[13px] rounded-lg'>
               <Play size={14} className='mr-2' />
               🔐 Live Multi-Modal Demo →
             </Button>
@@ -196,7 +196,7 @@ export default function CoverPage() {
       </div>
 
       {/* ── Footer ── */}
-      <footer className='relative z-10 flex items-center justify-between px-10 py-3 border-t border-white/[0.06] text-[9px] text-white/22'>
+      <footer className='relative z-10 flex items-center justify-between md:px-10 px-5 py-3 border-t border-white/6 text-[9px] text-white/22'>
         <span>
           BPMLVS v2.0 · Multi-Modal Biometric Pensioner Verification System
         </span>

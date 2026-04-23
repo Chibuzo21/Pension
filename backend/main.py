@@ -1,6 +1,7 @@
 import os
 import io
 import base64
+import asyncio
 import numpy as np
 import torch
 import torchaudio
@@ -9,6 +10,8 @@ import soundfile as sf
 import cv2
 import inflect
 
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -20,71 +23,111 @@ import onnxruntime as ort
 
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
-app = FastAPI()
+# ── Thread pool for CPU-bound ML inference ─────────────────────────────────
+# Each worker gets its own thread so inference never blocks the event loop
+_executor = ThreadPoolExecutor(max_workers=int(os.getenv("INFERENCE_WORKERS", "4")))
+
+# ── Global model holders ───────────────────────────────────────────────────
+classifier     = None
+whisper        = None
+face_app       = None
+antispoof_session = None
+_asp_h = _asp_w = _asp_name = _asp_shape = None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# LIFESPAN — load models once at startup
+# ═══════════════════════════════════════════════════════════════════════════
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global classifier, whisper, face_app, antispoof_session
+    global _asp_h, _asp_w, _asp_name, _asp_shape
+
+    loop = asyncio.get_event_loop()
+
+    def _load_models():
+        global classifier, whisper, face_app, antispoof_session
+        global _asp_h, _asp_w, _asp_name, _asp_shape
+
+        print("Loading ECAPA-TDNN voice model...")
+        MODEL_DIR = os.path.join(os.path.expanduser("~"), "ecapa_model")
+        classifier = EncoderClassifier.from_hparams(
+            source="speechbrain/spkrec-ecapa-voxceleb",
+            savedir=MODEL_DIR,
+        )
+        print("Voice model loaded.")
+
+        print("Loading Whisper model...")
+        device      = "cuda" if torch.cuda.is_available() else "cpu"
+        compute     = "float16" if device == "cuda" else "int8"
+        whisper     = WhisperModel("medium", device=device, compute_type=compute)
+        print(f"Whisper model loaded on {device}.")
+
+        print("Loading InsightFace model...")
+        FACE_MODEL_DIR = os.path.join(os.path.expanduser("~"), "insightface_models")
+        face_app       = FaceAnalysis(name="buffalo_l", root=FACE_MODEL_DIR)
+        face_app.prepare(ctx_id=0 if torch.cuda.is_available() else -1, det_size=(640, 640))
+        print("Face model loaded.")
+
+        print("Loading anti-spoof model...")
+        BASE_DIR        = os.path.dirname(os.path.abspath(__file__))
+        ANTISPOOF_MODEL = os.path.join(BASE_DIR, "antispoof.onnx")
+
+        providers = (
+            ["CUDAExecutionProvider", "CPUExecutionProvider"]
+            if torch.cuda.is_available()
+            else ["CPUExecutionProvider"]
+        )
+        antispoof_session = ort.InferenceSession(ANTISPOOF_MODEL, providers=providers)
+
+        _input      = antispoof_session.get_inputs()[0]
+        _shape      = _input.shape
+        _asp_shape  = _shape
+        _asp_h      = _shape[2] if isinstance(_shape[2], int) else 80
+        _asp_w      = _shape[3] if isinstance(_shape[3], int) else 80
+        _asp_name   = _input.name
+        print(f"Anti-spoof loaded. Input={_asp_name} shape={_shape} resize={_asp_w}x{_asp_h}")
+
+    # Load in thread so startup doesn't block the event loop
+    await loop.run_in_executor(_executor, _load_models)
+    print("✅ All models loaded — server ready.")
+    yield
+    # Shutdown
+    _executor.shutdown(wait=False)
+    print("Server shutdown complete.")
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ── Load voice model ───────────────────────────────────────────────────────
-print("Loading ECAPA-TDNN voice model...")
-MODEL_DIR = os.path.join(os.path.expanduser("~"), "ecapa_model")
-classifier = EncoderClassifier.from_hparams(
-    source="speechbrain/spkrec-ecapa-voxceleb",
-    savedir=MODEL_DIR,
-)
-print("Voice model loaded.")
 
-# ── Load Whisper model ─────────────────────────────────────────────────────
-print("Loading Whisper model...")
-whisper = WhisperModel("medium", device="cpu", compute_type="int8")
-print("Whisper model loaded.")
+# ═══════════════════════════════════════════════════════════════════════════
+# THRESHOLDS
+# ═══════════════════════════════════════════════════════════════════════════
 
-# ── Load face model ────────────────────────────────────────────────────────
-print("Loading InsightFace model...")
-FACE_MODEL_DIR = os.path.join(os.path.expanduser("~"), "insightface_models")
-face_app = FaceAnalysis(name="buffalo_l", root=FACE_MODEL_DIR)
-face_app.prepare(ctx_id=0, det_size=(640, 640))
-print("Face model loaded.")
-
-# ── Load anti-spoof model ──────────────────────────────────────────────────
-print("Loading anti-spoof model...")
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ANTISPOOF_MODEL = os.path.join(BASE_DIR, "antispoof.onnx")
-antispoof_session = ort.InferenceSession(ANTISPOOF_MODEL)
-
-_asp_input = antispoof_session.get_inputs()[0]
-_asp_shape = _asp_input.shape
-_asp_h     = _asp_shape[2] if isinstance(_asp_shape[2], int) else 80
-_asp_w     = _asp_shape[3] if isinstance(_asp_shape[3], int) else 80
-_asp_name  = _asp_input.name
-print(f"Anti-spoof loaded. Input={_asp_name} shape={_asp_shape} resize={_asp_w}x{_asp_h}")
-
-# ── Thresholds ─────────────────────────────────────────────────────────────
 VOICE_THRESHOLD     = 0.68
 FACE_THRESHOLD      = 0.65
 ANTISPOOF_THRESHOLD = 0.40
 VARIANCE_FLOOR      = 0.003
 
-# ── buffalo_l 2d106 landmark indices for eye corners ──────────────────────
+_LEFT_LID_TOP  = 40
+_LEFT_LID_BOT  = 39
+_LEFT_EYE_W_L  = 33
+_LEFT_EYE_W_R  = 35
+_RIGHT_LID_TOP = 94
+_RIGHT_LID_BOT = 93
+_RIGHT_EYE_W_L = 87
+_RIGHT_EYE_W_R = 89
 
-_LEFT_LID_TOP  = 40    # upper eyelid center
-_LEFT_LID_BOT  = 39    # lower eyelid center
-_LEFT_EYE_W_L  = 33    # outer corner
-_LEFT_EYE_W_R  = 35    # inner corner
-
-# Right eye
-_RIGHT_LID_TOP = 94    # upper eyelid center
-_RIGHT_LID_BOT = 93    # lower eyelid center
-_RIGHT_EYE_W_L = 87    # outer corner
-_RIGHT_EYE_W_R = 89    # inner corner  # inner corner  # inner corner
-# ── Inflect engine ─────────────────────────────────────────────────────────
 _p = inflect.engine()
 
-# ── Verification phrases ───────────────────────────────────────────────────
 VERIFY_PHRASES = [
     "my name is verified",
     "pension approved today",
@@ -104,10 +147,9 @@ def _softmax(x: np.ndarray) -> np.ndarray:
 
 
 def predict_spoof(img_bgr: np.ndarray, bbox) -> float:
-    """Returns probability the face is REAL. Uses RGB normalized to [-1,1], index 2 = real."""
     x1, y1, x2, y2 = [int(v) for v in bbox]
     h, w = img_bgr.shape[:2]
-    pad = 20
+    pad  = 20
     x1, y1 = max(0, x1 - pad), max(0, y1 - pad)
     x2, y2 = min(w, x2 + pad), min(h, y2 + pad)
 
@@ -122,7 +164,6 @@ def predict_spoof(img_bgr: np.ndarray, bbox) -> float:
     logits = antispoof_session.run(None, {_asp_name: tensor})[0][0]
     probs  = _softmax(logits)
     real_p = float(probs[2]) if len(probs) > 2 else float(probs[-1])
-    print(f"[antispoof] probs={[round(float(p),3) for p in probs]} real={real_p:.3f}")
     return real_p
 
 
@@ -130,48 +171,30 @@ def predict_spoof(img_bgr: np.ndarray, bbox) -> float:
 # LIVENESS SIGNALS
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _ear(landmarks: np.ndarray, top_idx: int, bot_idx: int,
-         w_l_idx: int, w_r_idx: int) -> float:
-    """
-    Eye Aspect Ratio — vertical lid gap / horizontal eye width.
-    A real blink dips below ~0.20; open eyes sit ~0.25–0.40.
-    Returns NaN if landmarks are degenerate.
-    """
-    top = landmarks[top_idx]
-    bot = landmarks[bot_idx]
-    wl  = landmarks[w_l_idx]
-    wr  = landmarks[w_r_idx]
-    vertical  = float(np.linalg.norm(top - bot))
+def _ear(landmarks, top_idx, bot_idx, w_l_idx, w_r_idx) -> float:
+    top        = landmarks[top_idx]
+    bot        = landmarks[bot_idx]
+    wl         = landmarks[w_l_idx]
+    wr         = landmarks[w_r_idx]
+    vertical   = float(np.linalg.norm(top - bot))
     horizontal = float(np.linalg.norm(wl - wr))
     if horizontal < 1e-3:
         return float("nan")
     return vertical / horizontal
 
 
-def _head_pose_yaw(landmarks: np.ndarray) -> float:
-    """
-    Rough yaw estimate from nose-tip vs eye-centre asymmetry.
-    Returns a signed float; large swing across frames = real head movement.
-    Index 86 = nose tip in buffalo_l 2d106.
-    """
-    nose   = landmarks[86]
-    l_eye  = landmarks[33]
-    r_eye  = landmarks[87]
-    eye_cx = (l_eye[0] + r_eye[0]) / 2.0
+def _head_pose_yaw(landmarks) -> float:
+    nose    = landmarks[86]
+    l_eye   = landmarks[33]
+    r_eye   = landmarks[87]
+    eye_cx  = (l_eye[0] + r_eye[0]) / 2.0
     eye_span = float(np.linalg.norm(l_eye - r_eye))
     if eye_span < 1e-3:
         return 0.0
     return float((nose[0] - eye_cx) / eye_span)
 
 
-def analyse_liveness(landmarks_seq: list[np.ndarray]) -> dict:
-    """
-    Derives per-frame EAR and yaw, then returns:
-      blink_detected  – at least one frame had EAR < 0.20
-      pose_variation  – std-dev of yaw across frames (> 0.04 = real movement)
-      ear_values      – list of per-frame EAR (for debug)
-      yaw_values      – list of per-frame yaw (for debug)
-    """
+def analyse_liveness(landmarks_seq: list) -> dict:
     ears = []
     yaws = []
     for lm in landmarks_seq:
@@ -234,7 +257,7 @@ def base64_to_image(image_b64: str) -> np.ndarray:
     return img
 
 
-def transcribe_audio(waveform: torch.Tensor) -> str:
+def _transcribe_sync(waveform: torch.Tensor) -> str:
     audio_np = waveform.squeeze().numpy()
     if audio_np.ndim > 1:
         audio_np = audio_np[0]
@@ -257,6 +280,11 @@ def transcribe_audio(waveform: torch.Tensor) -> str:
     return text.replace("-", " ")
 
 
+async def transcribe_audio(waveform: torch.Tensor) -> str:
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, _transcribe_sync, waveform)
+
+
 def phrase_match(transcript: str, phrase: str) -> tuple[bool, float]:
     phrase_words     = set(phrase.lower().split())
     transcript_words = set(transcript.lower().split())
@@ -267,23 +295,10 @@ def phrase_match(transcript: str, phrase: str) -> tuple[bool, float]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# FACE LIVENESS CHECK
+# FACE LIVENESS CHECK (sync — called via executor)
 # ═══════════════════════════════════════════════════════════════════════════
 
-def face_liveness_check(
-    frames_b64: list[str],
-) -> tuple[bool, str, list, list, dict]:
-    """
-    Returns (ok, reason, embeddings, detection_scores, liveness_debug).
-
-    Liveness gates (all must pass):
-      1. Anti-spoof model  — avg real probability >= ANTISPOOF_THRESHOLD
-      2. Embedding variance — not a perfectly static/replayed frame sequence
-      3. Blink OR pose variation — something a static image cannot fake
-
-    Gate 3 uses OR logic deliberately: elderly users may not blink during
-    a short capture, but they almost always move their head slightly.
-    """
+def _face_liveness_check_sync(frames_b64: list[str]):
     embeddings:       list[np.ndarray] = []
     detection_scores: list[float]      = []
     spoof_scores:     list[float]      = []
@@ -306,8 +321,7 @@ def face_liveness_check(
         if len(faces) > 1:
             return False, "multiple_faces_detected", [], [], {}
 
-        face = faces[0]
-
+        face      = faces[0]
         real_prob = predict_spoof(img, face.bbox)
         spoof_scores.append(real_prob)
 
@@ -316,38 +330,26 @@ def face_liveness_check(
         embeddings.append(emb)
         detection_scores.append(float(face.det_score))
 
-        # buffalo_l provides landmark_2d_106; fall back gracefully
         lm = getattr(face, "landmark_2d_106", None)
         landmarks_seq.append(lm)
 
     if len(embeddings) < 3:
         return False, "insufficient_faces_detected", [], [], {}
 
-    # ── Gate 1: Anti-spoof ─────────────────────────────────────────────────
     avg_real_prob = float(np.mean(spoof_scores))
-    print(f"[antispoof] avg_real_prob={avg_real_prob:.3f} threshold={ANTISPOOF_THRESHOLD}")
     if avg_real_prob < ANTISPOOF_THRESHOLD:
         return False, f"spoof_detected (score={avg_real_prob:.3f})", [], [], {}
 
-    # ── Gate 2: Embedding variance ─────────────────────────────────────────
     variance = float(np.std(embeddings))
     if variance < VARIANCE_FLOOR:
         return False, "spoof_detected_static_image", [], [], {}
 
-    # ── Gate 3: Blink or head-pose variation ──────────────────────────────
-    valid_lm = [lm for lm in landmarks_seq if lm is not None]
+    valid_lm      = [lm for lm in landmarks_seq if lm is not None]
     liveness_info = {"blink_detected": False, "pose_variation": 0.0}
 
     if valid_lm:
-        liveness_info = analyse_liveness(valid_lm)
-        print(
-            f"[liveness] blink={liveness_info['blink_detected']} "
-            f"pose_var={liveness_info['pose_variation']:.4f} "
-            f"ear_min={liveness_info['ear_min']}"
-        )
-
-    
-        POSE_VAR_THRESHOLD = 0.010   # was 0.015
+        liveness_info      = analyse_liveness(valid_lm)
+        POSE_VAR_THRESHOLD = 0.010
         has_motion = (
             liveness_info["blink_detected"]
             or liveness_info["pose_variation"] >= POSE_VAR_THRESHOLD
@@ -356,6 +358,11 @@ def face_liveness_check(
             return False, "spoof_detected_no_liveness", [], [], liveness_info
 
     return True, "ok", embeddings, detection_scores, liveness_info
+
+
+async def face_liveness_check(frames_b64: list[str]):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, _face_liveness_check_sync, frames_b64)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -372,6 +379,23 @@ class VerifyVoiceRequest(BaseModel):
     phrase_index: int = 0
 
 
+def _encode_voice_sync(audio_list: list[str]):
+    embeddings = []
+    for idx, audio_b64 in enumerate(audio_list):
+        try:
+            waveform = base64_to_tensor(audio_b64)
+        except Exception as e:
+            raise ValueError(f"Recording {idx + 1}: could not decode audio — {e}")
+        ok, reason = check_audio_quality(waveform)
+        if not ok:
+            raise ValueError(f"Recording {idx + 1}: {reason}")
+        with torch.no_grad():
+            emb = classifier.encode_batch(waveform)
+            emb = F.normalize(emb, dim=-1).squeeze()
+        embeddings.append(emb)
+    return embeddings
+
+
 @app.post("/enrol/voice")
 async def enrol_voice(req: EnrolRequest):
     if not req.audio_list:
@@ -379,22 +403,11 @@ async def enrol_voice(req: EnrolRequest):
     if len(req.audio_list) > 5:
         raise HTTPException(status_code=400, detail="Maximum 5 recordings")
 
-    embeddings = []
-    for idx, audio_b64 in enumerate(req.audio_list):
-        try:
-            waveform = base64_to_tensor(audio_b64)
-        except Exception as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Recording {idx + 1}: could not decode audio — {e}",
-            )
-        ok, reason = check_audio_quality(waveform)
-        if not ok:
-            raise HTTPException(status_code=422, detail=f"Recording {idx + 1}: {reason}")
-        with torch.no_grad():
-            emb = classifier.encode_batch(waveform)
-            emb = F.normalize(emb, dim=-1).squeeze()
-        embeddings.append(emb)
+    loop = asyncio.get_event_loop()
+    try:
+        embeddings = await loop.run_in_executor(_executor, _encode_voice_sync, req.audio_list)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     avg = torch.stack(embeddings).mean(dim=0)
     avg = F.normalize(avg, dim=-1)
@@ -417,17 +430,20 @@ async def verify_voice(req: VerifyVoiceRequest):
     if not ok:
         raise HTTPException(status_code=422, detail=reason)
 
-    with torch.no_grad():
-        live_emb = classifier.encode_batch(waveform)
-        live_emb = F.normalize(live_emb, dim=-1).squeeze()
+    loop = asyncio.get_event_loop()
 
-    ref_emb = F.normalize(
-        torch.tensor(req.embedding, dtype=torch.float32), dim=-1
-    )
-    score      = float(torch.dot(live_emb, ref_emb).item())
+    def _verify_sync():
+        with torch.no_grad():
+            live_emb = classifier.encode_batch(waveform)
+            return F.normalize(live_emb, dim=-1).squeeze()
+
+    live_emb = await loop.run_in_executor(_executor, _verify_sync)
+
+    ref_emb  = F.normalize(torch.tensor(req.embedding, dtype=torch.float32), dim=-1)
+    score    = float(torch.dot(live_emb, ref_emb).item())
     score_norm = round((score + 1) / 2, 3)
 
-    spoken_text      = transcribe_audio(waveform)
+    spoken_text      = await transcribe_audio(waveform)
     matched, overlap = phrase_match(spoken_text, expected_phrase)
 
     if not matched:
@@ -471,33 +487,40 @@ class VerifyFaceRequest(BaseModel):
     reference_embedding: List[float]
 
 
-@app.post("/enrol/face")
-async def enrol_face(req: EnrolFaceRequest):
-    if not req.image_list:
-        raise HTTPException(status_code=400, detail="No images provided")
-
+def _enrol_face_sync(image_list: list[str]):
     embeddings = []
-    for idx, img_b64 in enumerate(req.image_list):
+    for idx, img_b64 in enumerate(image_list):
         try:
             img = base64_to_image(img_b64)
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Image {idx + 1}: {e}")
+            raise ValueError(f"Image {idx + 1}: {e}")
 
         faces = face_app.get(img)
         if not faces:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Image {idx + 1}: no face detected — ensure good lighting and face the camera directly",
+            raise ValueError(
+                f"Image {idx + 1}: no face detected — ensure good lighting and face the camera directly"
             )
         if len(faces) > 1:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Image {idx + 1}: multiple faces detected — only the pensioner should be in frame",
+            raise ValueError(
+                f"Image {idx + 1}: multiple faces detected — only the pensioner should be in frame"
             )
 
         emb = faces[0].embedding.astype(np.float32)
         emb = emb / np.linalg.norm(emb)
         embeddings.append(emb)
+    return embeddings
+
+
+@app.post("/enrol/face")
+async def enrol_face(req: EnrolFaceRequest):
+    if not req.image_list:
+        raise HTTPException(status_code=400, detail="No images provided")
+
+    loop = asyncio.get_event_loop()
+    try:
+        embeddings = await loop.run_in_executor(_executor, _enrol_face_sync, req.image_list)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     avg = np.mean(embeddings, axis=0)
     avg = avg / np.linalg.norm(avg)
@@ -509,19 +532,18 @@ async def verify_face(req: VerifyFaceRequest):
     if not req.frames or len(req.frames) < 5:
         raise HTTPException(status_code=400, detail="At least 5 frames required")
 
-    ref_arr = np.array(req.reference_embedding, dtype=np.float32)
+    ref_arr  = np.array(req.reference_embedding, dtype=np.float32)
     ref_norm = np.linalg.norm(ref_arr)
     if ref_norm < 1e-6:
         raise HTTPException(status_code=400, detail="reference_embedding is zero vector — enrol first")
 
-    ok, reason, embeddings, detection_scores, liveness_info = face_liveness_check(req.frames)
+    ok, reason, embeddings, detection_scores, liveness_info = await face_liveness_check(req.frames)
     if not ok:
         return {"passed": False, "score": 0.0, "reason": reason}
 
     avg_emb = np.mean(embeddings, axis=0)
     avg_emb = avg_emb / np.linalg.norm(avg_emb)
 
-    # Dimension mismatch = stale enrolment, return actionable error
     if avg_emb.shape[0] != ref_arr.shape[0]:
         raise HTTPException(
             status_code=409,
@@ -531,7 +553,7 @@ async def verify_face(req: VerifyFaceRequest):
     ref_emb    = ref_arr / ref_norm
     score      = float(np.dot(avg_emb, ref_emb))
     score_norm = round((score + 1) / 2, 3)
-    print(f"[verify] score={score_norm} passed={score_norm >= FACE_THRESHOLD} pose_var={liveness_info.get('pose_variation')}")
+
     return {
         "passed":               score_norm >= FACE_THRESHOLD,
         "score":                score_norm,
@@ -542,23 +564,20 @@ async def verify_face(req: VerifyFaceRequest):
         "frames_submitted":     len(req.frames),
         "liveness":             liveness_info,
     }
+
+
 # ═══════════════════════════════════════════════════════════════════════════
-# DEBUG ENDPOINTS  — remove before production
+# DEBUG ENDPOINTS — remove before production
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.post("/debug/face")
 async def debug_face(req: VerifyFaceRequest):
-    """
-    Full per-frame breakdown: antispoof scores, EAR values, yaw values.
-    Use this to tune POSE_VAR_THRESHOLD and EAR blink threshold.
-    """
-    results = []
+    results       = []
     all_landmarks = []
 
     for idx, frame_b64 in enumerate(req.frames[:10]):
         try:
-            img  = base64_to_image(frame_b64)
-            h, w = img.shape[:2]
+            img   = base64_to_image(frame_b64)
             faces = face_app.get(img)
 
             if not faces:
@@ -566,12 +585,13 @@ async def debug_face(req: VerifyFaceRequest):
                 all_landmarks.append(None)
                 continue
 
-            face = faces[0]
-            lm   = getattr(face, "landmark_2d_106", None)
-            all_landmarks.append(lm)
-
+            face     = faces[0]
+            lm       = getattr(face, "landmark_2d_106", None)
             ear_info = {}
             yaw      = None
+
+            all_landmarks.append(lm)
+
             if lm is not None:
                 l = _ear(lm, _LEFT_LID_TOP,  _LEFT_LID_BOT,  _LEFT_EYE_W_L,  _LEFT_EYE_W_R)
                 r = _ear(lm, _RIGHT_LID_TOP, _RIGHT_LID_BOT, _RIGHT_EYE_W_L, _RIGHT_EYE_W_R)
@@ -583,20 +603,19 @@ async def debug_face(req: VerifyFaceRequest):
                 yaw = round(_head_pose_yaw(lm), 4)
 
             real_prob = predict_spoof(img, face.bbox)
-
             results.append({
-                "frame":      idx + 1,
-                "shape":      f"{w}x{h}",
-                "det_score":  round(float(face.det_score), 3),
-                "real_prob":  round(real_prob, 4),
-                "ear":        ear_info,
-                "yaw":        yaw,
+                "frame":     idx + 1,
+                "shape":     f"{img.shape[1]}x{img.shape[0]}",
+                "det_score": round(float(face.det_score), 3),
+                "real_prob": round(real_prob, 4),
+                "ear":       ear_info,
+                "yaw":       yaw,
             })
         except Exception as e:
             results.append({"frame": idx + 1, "error": str(e)})
             all_landmarks.append(None)
 
-    valid_lm = [lm for lm in all_landmarks if lm is not None]
+    valid_lm         = [lm for lm in all_landmarks if lm is not None]
     liveness_summary = analyse_liveness(valid_lm) if valid_lm else {}
 
     return {
@@ -606,26 +625,24 @@ async def debug_face(req: VerifyFaceRequest):
         "frames":              results,
     }
 
+
 @app.post("/debug/landmarks")
 async def debug_landmarks(req: VerifyFaceRequest):
-    """Dump all 106 landmark coordinates for frame 0 so you can identify eye indices."""
-    img = base64_to_image(req.frames[0])
+    img   = base64_to_image(req.frames[0])
     faces = face_app.get(img)
     if not faces:
         return {"error": "no face"}
-    
     lm = getattr(faces[0], "landmark_2d_106", None)
     if lm is None:
         return {"error": "no 2d106 landmarks"}
-    
-    # Return all 106 points so you can cross-reference with a visualisation
     return {
         "landmarks": {
             str(i): {"x": round(float(lm[i][0]), 1), "y": round(float(lm[i][1]), 1)}
             for i in range(len(lm))
         },
-        "image_shape": f"{img.shape[1]}x{img.shape[0]}"
+        "image_shape": f"{img.shape[1]}x{img.shape[0]}",
     }
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # HEALTH
@@ -635,6 +652,7 @@ async def debug_landmarks(req: VerifyFaceRequest):
 async def health():
     return {
         "status":                "ok",
+        "device":                "cuda" if torch.cuda.is_available() else "cpu",
         "voice_model":           "ECAPA-TDNN",
         "face_model":            "InsightFace buffalo_l",
         "voice_threshold":       VOICE_THRESHOLD,
@@ -642,4 +660,5 @@ async def health():
         "antispoof_threshold":   ANTISPOOF_THRESHOLD,
         "antispoof_input_shape": str(_asp_shape),
         "verify_phrases":        VERIFY_PHRASES,
+        "inference_workers":     int(os.getenv("INFERENCE_WORKERS", "4")),
     }

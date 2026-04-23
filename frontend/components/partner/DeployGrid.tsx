@@ -11,11 +11,11 @@ const DEPLOY_CARDS: DeployCard[] = [
 ];
 export default function DeployGrid() {
   return (
-    <div className='grid grid-cols-3 gap-3 mb-7 w-full max-w-145'>
+    <div className='grid md:grid-cols-3 grid-cols-2  content-center gap-3 mb-7 w-full max-w-145'>
       {DEPLOY_CARDS.map((card) => (
         <div
           key={card.label}
-          className={`rounded-xl px-4 py-4 text-center ${
+          className={`rounded-xl px-4 py-4 text-center flex-1 ${
             card.gold
               ? "bg-[#c8960c]/10 border border-[#c8960c]/25"
               : "bg-white/6 border border-white/.10"

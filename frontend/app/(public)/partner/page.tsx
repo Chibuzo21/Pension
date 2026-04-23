@@ -24,7 +24,7 @@ export default function PartnerPage() {
       <Topbar />
 
       {/* Hero */}
-      <main className='relative z-10 flex-1 flex flex-col items-center justify-center text-center px-10 py-10'>
+      <main className='relative z-10 flex-1 flex flex-col items-center justify-center text-center px-5 md:px-10 py-10'>
         <ReadyPill />
 
         <h1 className='text-[clamp(26px,4vw,54px)] text-white font-bold leading-[1.1] mb-4 max-w-170'>

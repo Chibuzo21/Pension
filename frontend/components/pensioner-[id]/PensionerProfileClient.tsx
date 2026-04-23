@@ -86,7 +86,7 @@ function PensionerDetailInner() {
         onOpenStatus={openStatus}
       />
 
-      <div className='grid lg:grid-cols-[1fr_300px] items-start gap-3.5 px-5 py-3.5'>
+      <div className='grid lg:grid-cols-[1fr_300px] items-start gap-3.5 md:px-5 px-2 py-3.5'>
         {/* Main content */}
         <div>
           <PensionerTabs />

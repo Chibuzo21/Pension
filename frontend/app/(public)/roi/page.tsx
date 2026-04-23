@@ -37,7 +37,7 @@ export default function ROIPage() {
       </div>
 
       {/* Main content */}
-      <div className='px-11 py-9 max-w-5xl mx-auto'>
+      <div className='md:px-11 px-6 py-9 max-w-5xl mx-auto'>
         <h1 className='text-4xl font-bold mb-2'>
           Your State's{" "}
           <em className='text-gold2 not-italic'>Return on Investment</em>

@@ -127,14 +127,12 @@ export default function VoiceEnrolWidget({
         {/* Ready / failed */}
         {(stage === "ready" || stage === "failed") && !done && (
           <>
-            <div className='border-2 border-dashed border-[var(--mist)] rounded-[9px] p-5 text-center'>
+            <div className='border-2 border-dashed border-mist rounded-[9px] p-5 text-center'>
               <span className='text-[40px] block mb-2'>🎙️</span>
               {stage === "failed" && (
-                <p className='text-[var(--red)] font-bold text-[12px] mb-3'>
-                  {error}
-                </p>
+                <p className='text-red font-bold text-[12px] mb-3'>{error}</p>
               )}
-              <p className='text-[12px] text-[var(--slate)]'>
+              <p className='text-[12px] text-slate'>
                 {takes.length === 0
                   ? "Click Record for Take 1. The pensioner speaks the passphrase each time."
                   : `${takes.length} take${takes.length > 1 ? "s" : ""} done — click Record for Take ${currentTake}.`}
@@ -143,13 +141,13 @@ export default function VoiceEnrolWidget({
             <button
               onClick={recordTake}
               disabled={recording}
-              className='w-full bg-[var(--gold)] hover:bg-[var(--gold2)] text-black font-bold text-[13px] py-2.5 rounded-[8px] transition-all duration-150 hover:-translate-y-px active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed'>
+              className='w-full bg-gold hover:bg-gold2 text-black font-bold text-[13px] py-2.5 rounded-lg transition-all duration-150 hover:-translate-y-px active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed'>
               🔴 Record Take {currentTake} (6s)
             </button>
             {takes.length > 0 && (
               <button
                 onClick={handleRetry}
-                className='w-full mt-2 bg-transparent border border-[var(--mist)] text-[var(--slate)] hover:border-[var(--g1)] hover:text-[var(--g1)] text-[11px] font-semibold py-1.5 rounded-[7px] transition-all duration-150'>
+                className='w-full mt-2 bg-transparent border border-mist text-slate hover:border-g1 hover:text-g1 text-[11px] font-semibold py-1.5 rounded-[7px] transition-all duration-150'>
                 ↺ Start Over
               </button>
             )}

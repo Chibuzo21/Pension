@@ -60,7 +60,7 @@ export default function UsersPage() {
   return (
     <div className='overflow-y-auto h-[calc(100vh-50px)] bg-offwhite'>
       {/* Page header */}
-      <div className='bg-white border-b border-mist px-5 py-3 flex items-center justify-between sticky top-0 z-10'>
+      <div className='bg-white border-b border-mist px-5 py-3 flex items-center justify-between sticky top-0 z-10 rounded-lg'>
         <h2 className='text-[15px] font-bold text-ink flex items-center gap-2'>
           🔑 User Accounts
           {users && (
@@ -74,7 +74,7 @@ export default function UsersPage() {
         </span>
       </div>
 
-      <div className='p-4 space-y-4'>
+      <div className='lg:p-4 p-2 space-y-4'>
         {/* Info banner */}
         <div className='flex gap-3 bg-white border border-mist rounded-[10px] px-4 py-3 shadow-[0_1px_4px_rgba(0,50,0,0.06)]'>
           <span className='text-[18px] shrink-0'>ℹ️</span>

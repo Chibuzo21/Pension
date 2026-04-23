@@ -40,27 +40,30 @@ export function PensionerHeader() {
     .join("");
   const status = pensioner?.status as string;
   const biometricLevel = pensioner?.biometricLevel as string;
+
   return (
-    <div className='flex flex-wrap items-center gap-2.5 border-b border-border bg-white px-5 py-2.5'>
+    <div className='flex flex-wrap items-center gap-2 sm:gap-2.5 border-b border-border bg-white px-3 sm:px-5 py-2 sm:py-2.5'>
       {/* Back button */}
       <Link href='/dashboard/admin/pensioners'>
-        <Button variant='outline' size='sm' className='h-7 text-[9.5px]'>
+        <Button
+          variant='outline'
+          size='sm'
+          className='h-7 text-[9.5px] shrink-0'>
           ← Registry
         </Button>
       </Link>
 
-      {/* Avatar + name */}
-      <div className='flex min-w-0 flex-1 items-center gap-2.5'>
-        <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-green-600 to-primary text-[12px] font-extrabold text-white'>
+      {/* Avatar + name — takes all remaining space */}
+      <div className='flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5'>
+        <div className='flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-600 to-primary text-[11px] sm:text-[12px] font-extrabold text-white'>
           {initials}
         </div>
 
         <div className='min-w-0'>
-          <p className='truncate text-[14px] font-bold'>
+          <p className='truncate text-[13px] sm:text-[14px] font-bold'>
             {pensioner?.fullName}
           </p>
-
-          <div className='flex flex-wrap items-center gap-1.5'>
+          <div className='flex flex-wrap items-center gap-1 sm:gap-1.5'>
             <code className='text-[9px] text-primary'>
               {pensioner?.pensionId}
             </code>
@@ -106,19 +109,21 @@ export function PensionerHeader() {
         </div>
       </div>
 
-      {/* Officer actions */}
+      {/* Officer actions — collapse to icon-only on xs */}
       {isOfficer && (
         <div className='flex shrink-0 gap-1.5'>
           <Link href={`/dashboard/admin/pensioners/${id}/edit`}>
             <Button variant='outline' size='sm' className='h-7 text-[9.5px]'>
-              ✏️ Edit
+              <span className='sm:hidden'>✏️</span>
+              <span className='hidden sm:inline'>✏️ Edit</span>
             </Button>
           </Link>
           <Link href={`/dashboard/admin/pensioners/${id}/enroll`}>
             <Button
               size='sm'
               className='h-7 bg-primary text-[9.5px] text-white hover:bg-green-700'>
-              🔐 Verify Now
+              <span className='sm:hidden'>🔐</span>
+              <span className='hidden sm:inline'>🔐 Verify Now</span>
             </Button>
           </Link>
         </div>

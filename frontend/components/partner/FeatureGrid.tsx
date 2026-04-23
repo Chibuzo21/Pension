@@ -30,7 +30,7 @@ const FEATURES = [
 
 export function FeatureGrid() {
   return (
-    <div className='grid grid-cols-2 gap-3 w-full max-w-2xl mb-7'>
+    <div className='grid md:grid-cols-2 gap-3 w-full max-w-2xl mb-7'>
       {FEATURES.map((f) => (
         <div
           key={f.title}

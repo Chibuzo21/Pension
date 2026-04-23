@@ -45,7 +45,7 @@ export function RecentAuditLogs({ logs }: { logs: AuditLogWithUser[] }) {
           logs.map((log) => (
             <div
               key={log._id}
-              className='flex items-center gap-1.5 px-0 py-1.5 border-b border-smoke text-[10px] last:border-b-0'>
+              className='flex items-center gap-1.5 px-0 py-1.5 border-b border-smoke text-[8px] last:border-b-0'>
               <span
                 className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0 ${
                   actionColors[log.action] ?? "bg-slate-100 text-slate-700"

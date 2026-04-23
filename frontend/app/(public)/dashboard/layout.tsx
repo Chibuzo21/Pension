@@ -37,7 +37,7 @@ export default function DashboardLayout({
       <TopBar role={role} />
 
       {/* This row must be overflow-hidden so only <main> scrolls */}
-      <div className='flex flex-1 overflow-hidden min-h-0'>
+      <div className='flex flex-1 overflow-hidden min-h-0 pb-4'>
         {/* Desktop sidebar — full height of this row */}
         <Sidebar role={role} />
 

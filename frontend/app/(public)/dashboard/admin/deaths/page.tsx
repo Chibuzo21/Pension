@@ -28,7 +28,7 @@ export default function DeathsPage() {
   return (
     <div className='overflow-y-auto h-[calc(100dvh-64px)]'>
       {/* Header */}
-      <div className='bg-white border-b border-mist p-4'>
+      <div className='bg-white border-b border-mist p-4 rounded-lg'>
         <h2 className='text-lg font-bold'>Death &amp; Dormancy Management</h2>
         <p style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>
           Review death claims, follow up on dormant pensioners, and maintain
