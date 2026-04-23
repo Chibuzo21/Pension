@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { UserButton, useUser } from "@clerk/nextjs";
+import { Menu } from "lucide-react";
 
 const routeLabels: Record<string, string> = {
   "/dashboard/admin": "Pension Administration System",
@@ -30,6 +31,7 @@ interface TopBarProps {
   backHref?: string;
   backLabel?: string;
   action?: React.ReactNode;
+  onMenuClick?: () => void;
 }
 
 export function TopBar({
@@ -38,6 +40,7 @@ export function TopBar({
   backHref,
   backLabel,
   action,
+  onMenuClick,
 }: TopBarProps) {
   const pathname = usePathname();
   const label = getLabel(pathname);
@@ -46,7 +49,13 @@ export function TopBar({
 
   return (
     // h-12 = 48px, a real Tailwind value. shrink-0 prevents it from being squished.
-    <header className='h-12 shrink-0 sticky top-0 z-30 bg-[#001a08] flex items-center justify-between px-5 border-b-2 border-[#c8960c]'>
+    <header className='h-12 shrink-0 sticky top-0 z-30 bg-[#001a08] flex items-center justify-between px-5 border-b-2 border-[#c8960c] '>
+      <button
+        onClick={onMenuClick}
+        className='lg:hidden mr-3 flex items-center justify-center w-8 h-8 rounded-md text-foreground/70 hover:text-foreground hover:bg-accent transition-colors bg-[#003311] border border-white/10 text-white/70 hover:text-white'>
+        <Menu size={16} />
+      </button>
+
       <div className='flex items-center gap-2'>
         <div className='text-white'>
           <div className='text-xs font-bold leading-tight'>{label}</div>

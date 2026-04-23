@@ -14,10 +14,6 @@ import {
 import { DialogDescription, DialogTitle } from "../ui/dialog";
 import { useState } from "react";
 
-interface SidebarProps {
-  role?: string;
-}
-
 const adminNav = [
   {
     section: "Overview",
@@ -143,48 +139,37 @@ function NavContent({
   );
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
-export function Sidebar({ role }: SidebarProps) {
-  const [open, setOpen] = useState(false);
+interface SidebarProps {
+  role?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function Sidebar({ role, open = false, onOpenChange }: SidebarProps) {
   return (
     <>
-      {/* ── Desktop sidebar (lg+) ── */}
-      <aside className='hidden lg:flex w-47.5  bg-[#003311] flex-col shrink-0 h-full '>
+      {/* Desktop sidebar — unchanged */}
+      <aside className='hidden lg:flex w-47.5 bg-[#003311] flex-col shrink-0 h-full'>
         <NavContent role={role} />
       </aside>
 
-      {/* ── Mobile trigger button (< lg) ── */}
-      <div className='lg:hidden'>
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <button className='fixed z-50 left-4 top-14 flex cursor-pointer items-center justify-center w-9 h-9 rounded-lg bg-[#003311] border border-white/10 text-white/70 hover:text-white transition-colors'>
-              <Menu size={16} />
-            </button>
-          </SheetTrigger>
-
-          <SheetContent
-            side='left'
-            className='w-55 p-0 bg-[#003311] border-r border-white/8'>
-            <VisuallyHidden>
-              <DialogTitle>Sidebar Menu</DialogTitle>
-              <DialogDescription>
-                Sidebar menu for admins and pensioners
-              </DialogDescription>
-            </VisuallyHidden>
-            {/* Close button */}
-            <SheetClose className='absolute right-3 top-3 z-10 flex items-center justify-center w-7 h-7 rounded-md bg-white/[0.07] text-white/50 hover:text-white transition-colors cursor-pointer'>
-              <X size={13} />
-            </SheetClose>
-
-            <NavContent
-              role={role}
-              onLinkClick={() => {
-                setOpen(false);
-              }}
-            />
-          </SheetContent>
-        </Sheet>
-      </div>
+      {/* Mobile sheet — no trigger inside, controlled externally */}
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side='left'
+          className='w-55 p-0 bg-[#003311] border-r border-white/8'>
+          <VisuallyHidden>
+            <DialogTitle>Sidebar Menu</DialogTitle>
+            <DialogDescription>
+              Sidebar menu for admins and pensioners
+            </DialogDescription>
+          </VisuallyHidden>
+          <SheetClose className='absolute right-3 top-3 z-10 flex items-center justify-center w-7 h-7 rounded-md bg-white/[0.07] text-white/50 hover:text-white transition-colors cursor-pointer'>
+            <X size={13} />
+          </SheetClose>
+          <NavContent role={role} onLinkClick={() => onOpenChange?.(false)} />
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
