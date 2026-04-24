@@ -9,13 +9,6 @@ import { useCounter } from "@/hooks/useCounter";
 import { ModalityPill } from "@/components/overview/ModalityPill";
 import { StatBlock } from "@/components/overview/StatBlock";
 
-// ── Counter hook ──────────────────────────────────────────────────────────────
-
-// ── Modality pill ─────────────────────────────────────────────────────────────
-
-// ── Stat block inside the frosted stats row ───────────────────────────────────
-
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function CoverPage() {
   const [started, setStarted] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -26,8 +19,11 @@ export default function CoverPage() {
     return () => clearTimeout(timer);
   }, []);
   const { user } = useUser();
-  const isStuck = user && !user.unsafeMetadata?.onboardingComplete;
-  console.log("isStruck", isStuck);
+  const isStuck =
+    user &&
+    !user.unsafeMetadata?.onboardingComplete &&
+    user?.publicMetadata?.role === "pensioner";
+
   const cnt186 = useCounter(186, 1800, started);
   const cnt23 = useCounter(23, 1400, started);
 
@@ -73,14 +69,14 @@ export default function CoverPage() {
         ref={heroRef}
         className='relative z-10 flex-1 flex flex-col items-center justify-center text-center md:px-10 py-8 px-5'>
         {/* Live eyebrow pill */}
-        <div className='flex items-center gap-2 bg-[#c8960c]/[0.13] border border-[#c8960c]/30 text-[#e6ad0e] text-[9px] font-bold tracking-[2px] uppercase px-4 py-1.5 rounded-full mb-5'>
+        <div className='flex items-center gap-2 bg-[#c8960c]/13 border border-[#c8960c]/30 text-[#e6ad0e] text-[9px] font-bold tracking-[2px] uppercase px-4 py-1.5 rounded-full mb-5'>
           <span className='w-1.5 h-1.5 rounded-full bg-[#e6ad0e] animate-pulse' />
           Multi-Modal Biometric Pension Verification
         </div>
 
         {/* H1 */}
         <h1
-          className='font-bold text-white leading-[1.1] tracking-tight mb-4 max-w-[820px]'
+          className='font-bold text-white leading-[1.1] tracking-tight mb-4 max-w-205'
           style={{ fontSize: "clamp(30px, 4.5vw, 58px)" }}>
           Ending Nigeria's
           <br />
@@ -97,7 +93,6 @@ export default function CoverPage() {
           — the strongest pension identity system ever deployed in Africa.
         </p>
 
-        {/* Modality pills */}
         <div className='flex gap-2 justify-center flex-wrap mb-7'>
           <ModalityPill label='📷 Face + LBP (512-float)' />
 
