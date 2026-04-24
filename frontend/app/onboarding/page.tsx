@@ -11,18 +11,13 @@ import { getErrorMessage } from "@/lib/errors";
 type VerifiedRecord = { name: string; pensionId: string };
 
 export default function OnboardingPage() {
-  const { user, isLoaded } = useUser();
+  const { user } = useUser();
   const router = useRouter();
   const [nin, setNin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState<VerifiedRecord | null>(null);
 
-  useEffect(() => {
-    if (isLoaded && user?.unsafeMetadata?.onboardingComplete) {
-      router.replace("/dashboard");
-    }
-  }, [isLoaded, user, router]);
   const isComplete = nin.trim().length === 11;
 
   const steps = [

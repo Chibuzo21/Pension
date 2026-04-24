@@ -1,4 +1,3 @@
-// middleware.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { UserRole } from "./types/global";
@@ -12,73 +11,62 @@ const isPublicRoute = createRouteMatcher([
   "/partner",
   "/api/clerk-webhook(.*)",
   "/api/onboarding/(.*)",
-  // 👆 /onboarding removed from here
 ]);
-const isHomeRoute = createRouteMatcher(["/"]);
 
+const isHomeRoute = createRouteMatcher(["/"]);
+const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isAdminRoute = createRouteMatcher(["/dashboard/admin(.*)"]);
 const isPortalRoute = createRouteMatcher(["/dashboard/portal(.*)"]);
-const isDashboard = createRouteMatcher(["/dashboard"]);
-const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
+const isDashboardRoot = createRouteMatcher(["/dashboard"]);
 
 export default clerkMiddleware(async (auth, request) => {
-  if (isPublicRoute(request)) return NextResponse.next();
+  // 1. Home → overview
   if (isHomeRoute(request))
     return NextResponse.redirect(new URL("/overview", request.url));
 
+  // 2. Public routes — no auth needed
+  if (isPublicRoute(request)) return NextResponse.next();
+
   const { userId, sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role as UserRole | undefined;
-  const hasCompletedOnboarding =
-    sessionClaims?.unsafeMetadata?.onboardingComplete;
+  const isStaff = role === "admin" || role === "officer";
+  const isPensioner = role === "pensioner";
 
-  // 1. Unauthenticated — send to sign-in
+  // 3. Unauthenticated → sign-in
   if (!userId) {
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirect_url", request.url);
     return NextResponse.redirect(signInUrl);
   }
 
-  if (userId && !isOnboardingRoute(request) && !isPublicRoute(request)) {
-    const isLinked = !!role; // role is only set after successful server-side link
-    if (!isLinked) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
-    }
-  }
-
-  const isStaff = role === "admin" || role === "officer";
-
-  // 2. Onboarding route — let through always if authenticated
-  if (isOnboardingRoute(request)) return NextResponse.next();
-
-  // 3. Non-staff without NIN → force onboarding
-  // if (!isStaff && !hasNin) {
-  //   return NextResponse.redirect(new URL("/onboarding", request.url));
-  // }
-
-  // 4. Admin/Officer protection
-  if (isAdminRoute(request) && !isStaff) {
-    return NextResponse.redirect(new URL("/dashboard/portal", request.url));
-  }
-  if (isPortalRoute(request) && isStaff) {
-    return NextResponse.redirect(new URL("/dashboard/admin", request.url));
-  }
-  // 5. /dashboard → redirect to role-specific dashboard
-  if (isDashboard(request)) {
-    if (isStaff) {
+  // 4. Onboarding gate
+  if (isOnboardingRoute(request)) {
+    // Staff should never be on onboarding
+    if (isStaff)
       return NextResponse.redirect(new URL("/dashboard/admin", request.url));
-    }
-    if (role === "pensioner") {
+    // Pensioners who've been linked (have a role) are done with onboarding
+    if (isPensioner)
       return NextResponse.redirect(new URL("/dashboard/portal", request.url));
-    }
-    // Authenticated but no role yet → onboarding or fallback
-    return NextResponse.redirect(new URL("/onboarding", request.url));
+    // No role yet → let them through to complete onboarding
+    return NextResponse.next();
   }
 
-  // 5. Portal protection
-  const allowedPortalRoles = ["pensioner", "admin", "officer"];
-  if (isPortalRoute(request) && (!role || !allowedPortalRoles.includes(role))) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
+  // 5. Force unlinked users (no role) to onboarding
+  if (!role) return NextResponse.redirect(new URL("/onboarding", request.url));
+
+  // 6. /dashboard root → role-based redirect
+  if (isDashboardRoot(request)) {
+    if (isStaff)
+      return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+    if (isPensioner)
+      return NextResponse.redirect(new URL("/dashboard/portal", request.url));
   }
+
+  // 7. Cross-role protection
+  if (isAdminRoute(request) && !isStaff)
+    return NextResponse.redirect(new URL("/dashboard/portal", request.url));
+  if (isPortalRoute(request) && !isPensioner)
+    return NextResponse.redirect(new URL("/dashboard/admin", request.url));
 
   return NextResponse.next();
 });
