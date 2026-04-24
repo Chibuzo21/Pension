@@ -5,7 +5,6 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShieldCheck, FileText } from "lucide-react";
-
 import { WelcomeHeader } from "@/components/portal/WelcomeHeader";
 import { VerificationBanner } from "@/components/portal/VerificationBanner";
 import { NotLinkedNotice } from "@/components/portal/NotLinkedNotice";
@@ -26,31 +25,32 @@ export default function PensionerPortalPage() {
 
   const lastVerification = verifications?.[0] ?? null;
   const isOverdue =
-    !lastVerification ||
-    new Date(lastVerification.verificationDate) <
-      new Date(Date.now() - OVERDUE_MS);
+    !lastVerification || new Date(lastVerification.verificationDate);
+  new Date(Date.now() - OVERDUE_MS);
 
   if (!isLoaded) {
     return (
-      <div className='max-w-2xl mx-auto space-y-4'>
-        <Skeleton className='h-14 rounded-xl' />
-        <Skeleton className='h-20 rounded-xl' />
+      <div className='max-w-2xl mx-auto px-4 py-5 space-y-4'>
+        <Skeleton className='h-16 rounded-xl bg-smoke' />
+        <Skeleton className='h-20 rounded-xl bg-smoke' />
         <div className='grid grid-cols-2 gap-3'>
-          <Skeleton className='h-28 rounded-xl' />
-          <Skeleton className='h-28 rounded-xl' />
+          <Skeleton className='h-28 rounded-xl bg-smoke' />
+          <Skeleton className='h-28 rounded-xl bg-smoke' />
         </div>
+        <Skeleton className='h-48 rounded-xl bg-smoke' />
+        <Skeleton className='h-32 rounded-xl bg-smoke' />
       </div>
     );
   }
 
   return (
-    <div className='max-w-2xl mx-auto space-y-5'>
+    <div className='max-w-2xl mx-auto px-4 py-5 space-y-4 min-w-0'>
       <WelcomeHeader />
 
       {isLinked && (
         <VerificationBanner
           lastVerification={lastVerification}
-          isOverdue={isOverdue}
+          isOverdue={isOverdue as boolean}
         />
       )}
 
@@ -59,14 +59,14 @@ export default function PensionerPortalPage() {
       <div className='grid grid-cols-2 gap-3'>
         <ActionCard
           href='/dashboard/portal/verify'
-          icon={<ShieldCheck className='h-6 w-6' />}
+          icon={<ShieldCheck className='h-5 w-5' />}
           label='Verify Liveness'
           sub='Complete biometric check'
           color='primary'
         />
         <ActionCard
           href='/dashboard/portal/documents'
-          icon={<FileText className='h-6 w-6' />}
+          icon={<FileText className='h-5 w-5' />}
           label='My Documents'
           sub='View uploaded documents'
           color='blue'

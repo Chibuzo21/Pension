@@ -19,11 +19,10 @@ export default function OnboardingPage() {
   const [verified, setVerified] = useState<VerifiedRecord | null>(null);
 
   useEffect(() => {
-    if (isLoaded && user?.unsafeMetadata?.nin) router.replace("/");
+    if (isLoaded && user?.unsafeMetadata?.onboardingComplete) {
+      router.replace("/dashboard");
+    }
   }, [isLoaded, user, router]);
-
-  if (!isLoaded || user?.unsafeMetadata?.nin) return null;
-
   const isComplete = nin.trim().length === 11;
 
   const steps = [
@@ -46,8 +45,10 @@ export default function OnboardingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nin: trimmed }),
       });
-      const data = await res.json();
+
+      const data = await res.json(); // read ONCE up here
       if (!res.ok) return setError(data.error ?? "Could not verify your NIN");
+
       setVerified({ name: data.name, pensionId: data.pensionId });
     } catch (e) {
       setError(getErrorMessage(e, "Something went wrong — please try again"));
@@ -60,20 +61,29 @@ export default function OnboardingPage() {
     setLoading(true);
     setError("");
     try {
-      await user!.update({
-        unsafeMetadata: {
-          nin: nin.trim().toUpperCase(),
-          onboardingComplete: true,
-        },
+      const res = await fetch("/api/onboarding/confirm-nin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nin: nin.trim().toUpperCase() }),
       });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(
+          data.error ?? "Failed to link your account — please try again",
+        );
+        setVerified(null);
+        setNin(""); // force them to re-enter
+        return;
+      }
+
+      // Only reload + redirect AFTER server confirms the link
       await user!.reload();
-      await new Promise((res) => setTimeout(res, 1500));
       router.replace("/dashboard");
     } catch (e) {
-      setError(
-        getErrorMessage(e, "Failed to link your account — please try again"),
-      );
+      setError(getErrorMessage(e, "Something went wrong — please try again"));
       setVerified(null);
+      setNin("");
     } finally {
       setLoading(false);
     }

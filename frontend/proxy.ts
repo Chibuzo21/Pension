@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   "/crisis",
   "/partner",
   "/api/clerk-webhook(.*)",
+  "/api/onboarding/(.*)",
   // 👆 /onboarding removed from here
 ]);
 const isHomeRoute = createRouteMatcher(["/"]);
@@ -27,6 +28,8 @@ export default clerkMiddleware(async (auth, request) => {
 
   const { userId, sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role as UserRole | undefined;
+  const hasCompletedOnboarding =
+    sessionClaims?.unsafeMetadata?.onboardingComplete;
 
   // 1. Unauthenticated — send to sign-in
   if (!userId) {
@@ -35,8 +38,14 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.redirect(signInUrl);
   }
 
+  if (userId && !isOnboardingRoute(request) && !isPublicRoute(request)) {
+    const isLinked = !!role; // role is only set after successful server-side link
+    if (!isLinked) {
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
+  }
+
   const isStaff = role === "admin" || role === "officer";
-  const hasNin = !!sessionClaims?.unsafeMetadata?.nin;
 
   // 2. Onboarding route — let through always if authenticated
   if (isOnboardingRoute(request)) return NextResponse.next();

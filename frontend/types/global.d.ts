@@ -19,3 +19,15 @@ export type DocumentType =
   | "Clearance Form"
   | "Verification Certificate"
   | "Death Certificate";
+
+declare global {
+  interface CustomJwtSessionClaims {
+    metadata?: {
+      role?: UserRole;
+    };
+    unsafeMetadata?: {
+      nin?: string;
+      onboardingComplete?: boolean; // 👈 add this
+    };
+  }
+}

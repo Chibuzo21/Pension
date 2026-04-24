@@ -18,7 +18,8 @@ export default defineSchema({
   })
     .index("by_clerkId", ["clerkId"])
     .index("by_email", ["email"])
-    .index("by_role", ["role"]),
+    .index("by_role", ["role"])
+    .index("by_pensionerId", ["pensionerId"]),
 
   // ── Pensioners ─────────────────────────────────────────────────
   pensioners: defineTable({

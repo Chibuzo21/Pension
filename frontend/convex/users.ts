@@ -183,3 +183,13 @@ export const syncRoleToClerk = action({
     }
   },
 });
+// convex/users.ts
+export const getByPensionerId = query({
+  args: { pensionerId: v.id("pensioners") },
+  handler: async (ctx, { pensionerId }) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_pensionerId", (q) => q.eq("pensionerId", pensionerId))
+      .first();
+  },
+});

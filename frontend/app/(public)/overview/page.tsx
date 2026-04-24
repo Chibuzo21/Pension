@@ -4,59 +4,16 @@ import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { BarChart2, ShieldCheck, Play } from "lucide-react";
 import Link from "next/link";
+import { SignOutButton, useUser } from "@clerk/nextjs";
+import { useCounter } from "@/hooks/useCounter";
+import { ModalityPill } from "@/components/overview/ModalityPill";
+import { StatBlock } from "@/components/overview/StatBlock";
 
 // ── Counter hook ──────────────────────────────────────────────────────────────
-function useCounter(target: number, duration = 1800, start = false) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!start) return;
-    let startTime: number | null = null;
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(ease * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [target, duration, start]);
-  return value;
-}
 
 // ── Modality pill ─────────────────────────────────────────────────────────────
-function ModalityPill({ label }: { label: string }) {
-  return (
-    <div className='flex items-center gap-2 bg-white/[0.07] border border-white/12 text-white/70 text-[10.5px] font-semibold px-3 py-1.5 rounded-full'>
-      <span className='w-1.5 h-1.5 rounded-full bg-[#e6ad0e] shrink-0' />
-      {label}
-    </div>
-  );
-}
 
 // ── Stat block inside the frosted stats row ───────────────────────────────────
-function StatBlock({
-  value,
-  label,
-  border = true,
-}: {
-  value: React.ReactNode;
-  label: string;
-  border?: boolean;
-}) {
-  return (
-    <div
-      className={`flex-1 px-4 py-3.5 text-center ${
-        border ? "border-r border-white/5" : ""
-      }`}>
-      <div className='text-[clamp(16px,2.2vw,28px)] font-bold text-[#e6ad0e] leading-none mb-1 font-mono'>
-        {value}
-      </div>
-      <div className='text-[9px] text-white/36 tracking-[0.4px] uppercase'>
-        {label}
-      </div>
-    </div>
-  );
-}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CoverPage() {
@@ -68,13 +25,15 @@ export default function CoverPage() {
     const timer = setTimeout(() => setStarted(true), 400);
     return () => clearTimeout(timer);
   }, []);
-
+  const { user } = useUser();
+  const isStuck = user && !user.unsafeMetadata?.onboardingComplete;
+  console.log("isStruck", isStuck);
   const cnt186 = useCounter(186, 1800, started);
   const cnt23 = useCounter(23, 1400, started);
 
   return (
     <div
-      className='flex flex-col min-h-screen bg-[#001a08]  relative'
+      className='flex flex-col h-full min-h-screen bg-[#001a08]  relative'
       style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
       {/* ── Radial background gradients ── */}
       <div
@@ -148,7 +107,7 @@ export default function CoverPage() {
         </div>
 
         {/* Stats bar */}
-        <div className='flex w-full max-w-[680px] mb-7 bg-white/[0.05] border border-white/[0.08] rounded-xl'>
+        <div className='flex w-full max-w-170 mb-7 bg-white/5 border border-white/8 rounded-xl'>
           <StatBlock
             value={
               <>
@@ -179,6 +138,27 @@ export default function CoverPage() {
             </Button>
           </Link>
         </div>
+        {isStuck && (
+          <div className='fixed bottom-20 right-6 bg-white border border-red-200 rounded-xl shadow-lg p-4 max-w-xs text-sm'>
+            <p className='font-semibold text-gray-800 mb-1'>
+              Account not linked
+            </p>
+            <p className='text-gray-500 mb-3'>
+              Your account isn't connected to a pension record.{" "}
+              <Link
+                href='/onboarding'
+                className='text-green-700 font-medium underline'>
+                Try again
+              </Link>{" "}
+              or sign out and use the correct account.
+            </p>
+            <SignOutButton redirectUrl='/sign-in'>
+              <button className='w-full text-center text-red-600 font-semibold hover:underline'>
+                Sign out
+              </button>
+            </SignOutButton>
+          </div>
+        )}
       </main>
 
       {/* ── Version strip ── */}
