@@ -122,7 +122,7 @@ export default function PensionersPage() {
       {/* Table card */}
       <div className='bg-white border border-smoke rounded-xl overflow-hidden shadow-sm min-w-0'>
         <div className='overflow-x-auto'>
-          <table className='w-full border-collapse text-xs min-w-[640px]'>
+          <table className='w-full border-collapse text-xs min-w-160'>
             <thead>
               <tr className='bg-g1'>
                 {[

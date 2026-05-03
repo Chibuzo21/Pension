@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 // api/verify/face/route
 const SPEAKER_SERVICE =
-  process.env.SPEAKER_SERVICE_URL ?? "http://localhost:8000";
+  process.env.SPEAKER_SERVICE_URL ?? "http://localhost:8000/";
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();

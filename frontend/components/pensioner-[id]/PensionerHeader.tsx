@@ -123,7 +123,7 @@ export function PensionerHeader() {
               size='sm'
               className='h-7 bg-primary text-[9.5px] text-white hover:bg-green-700'>
               <span className='sm:hidden'>🔐</span>
-              <span className='hidden sm:inline'>🔐 Verify Now</span>
+              <span className='hidden sm:inline'>🔐 Enroll Now</span>
             </Button>
           </Link>
         </div>

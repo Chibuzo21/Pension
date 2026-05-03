@@ -9,7 +9,7 @@ declare global {
       role?: UserRole;
     };
     unsafeMetadata?: {
-      nin?: string;
+      onboardingComplete?: boolean;
     };
   }
 }

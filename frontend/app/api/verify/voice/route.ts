@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
+// api/verify/voice
 const SPEAKER_SERVICE =
   process.env.SPEAKER_SERVICE_URL ?? "http://localhost:8000";
 
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId, sessionClaims } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -14,6 +20,7 @@ export async function POST(req: NextRequest) {
     audioList,
     referenceEmbedding,
     phraseIndex,
+    pensionerId,
     mode = "verify",
   } = await req.json();
 
@@ -34,6 +41,37 @@ export async function POST(req: NextRequest) {
         { error: data.detail ?? "Enrolment failed" },
         { status: res.status },
       );
+
+    // ── Advance onboarding step after voice enrolment ───────────────────
+    // VoiceEnrolWidget saves the embedding via convex mutation directly,
+    // so here we only need to advance the Clerk metadata step.
+    const currentStep = sessionClaims?.metadata?.onboardingStep as
+      | string
+      | undefined;
+    if (currentStep === "voice") {
+      // Determine new biometric level from Convex if pensionerId provided
+      let newLevel = "L2";
+      if (pensionerId) {
+        try {
+          const p = await convex.query(api.pensioners.getById, {
+            id: pensionerId as Id<"pensioners">,
+          });
+          newLevel = p?.faceEncoding ? "L3" : "L2";
+        } catch {
+          // Non-fatal
+        }
+      }
+
+      const client = await clerkClient();
+      await client.users.updateUserMetadata(userId, {
+        publicMetadata: {
+          ...sessionClaims?.metadata,
+          onboardingStep: "docs",
+          biometricLevel: newLevel,
+        },
+      });
+    }
+
     return NextResponse.json({
       embedding: data.embedding,
       samples_used: data.samples_used,
@@ -57,7 +95,7 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({
       audio_base64: audioBase64,
       embedding: referenceEmbedding,
-      phrase_index: phraseIndex, // ← matches backend VerifyVoiceRequest
+      phrase_index: phraseIndex,
     }),
   });
   const data = await res.json();

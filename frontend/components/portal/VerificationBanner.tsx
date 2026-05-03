@@ -61,7 +61,7 @@ export function VerificationBanner({ lastVerification, isOverdue }: Props) {
         variant='outline'
         className='border-emerald-300 shrink-0'
         asChild>
-        <Link href='/dashboard/portal/verify'>Verify Again</Link>
+        <Link href='/dashboard/portal/verify'>Verified</Link>
       </Button>
     </div>
   );

@@ -82,7 +82,6 @@ http.route({
     if (type === "user.created" || type === "user.updated") {
       const clerkId = data.id;
       const email = data.email_addresses?.[0]?.email_address ?? "";
-      const nin = data.unsafe_metadata?.nin as string | undefined;
 
       const username =
         (data.username ??
@@ -95,7 +94,7 @@ http.route({
         | "pensioner"
         | undefined;
 
-      console.log("👤 Processing:", { clerkId, email, nin, role });
+      console.log("👤 Processing:", { clerkId, email, role });
 
       try {
         const convexUserId = await ctx.runMutation(api.users.upsertFromClerk, {
@@ -105,32 +104,6 @@ http.route({
           role,
         });
         console.log("✅ Upsert result:", convexUserId);
-
-        if (convexUserId && nin) {
-          const existingUser = await ctx.runQuery(api.users.getByClerkId, {
-            clerkId,
-          });
-          if (!existingUser?.pensionerId) {
-            const pensioner = await ctx.runQuery(api.pensioners.getByNin, {
-              nin,
-            });
-            console.log("🔍 Pensioner found:", pensioner?._id ?? "none");
-
-            if (pensioner) {
-              await ctx.runMutation(api.users.linkToPensioner, {
-                userId: convexUserId,
-                pensionerId: pensioner._id,
-                updatedByUserId: convexUserId,
-              });
-              await ctx.runAction(api.users.syncRoleToClerk, {
-                clerkId,
-                role: "pensioner",
-              });
-
-              console.log("🔗 Linked!");
-            }
-          }
-        }
       } catch (err) {
         console.error("❌ Webhook processing error:", err); // 👈 this will show the real error
         return new Response("Processing error", { status: 500 });

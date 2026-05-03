@@ -76,3 +76,44 @@ export const deleteDocument = mutation({
     });
   },
 });
+
+export const insert = mutation({
+  args: {
+    pensionerId: v.id("pensioners"),
+    documentType: v.union(
+      v.literal("Retirement Notice"),
+      v.literal("Authorization Letter"),
+      v.literal("ID Card"),
+      v.literal("Clearance Form"),
+      v.literal("Verification Certificate"),
+      v.literal("Death Certificate"),
+    ),
+    storageId: v.string(),
+    filename: v.string(),
+    mimeType: v.string(),
+    uploadedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const id = await ctx.db.insert("documents", args);
+
+    await ctx.db.insert("auditLogs", {
+      userId: args.uploadedBy,
+      action: "DOCUMENT_UPLOADED",
+      entityType: "document",
+      entityId: id,
+      details: `Uploaded ${args.documentType}: ${args.filename}`,
+    });
+
+    return id;
+  },
+});
+
+export const listByPensioner = query({
+  args: { pensionerId: v.id("pensioners") },
+  handler: async (ctx, { pensionerId }) => {
+    return ctx.db
+      .query("documents")
+      .withIndex("by_pensioner", (q) => q.eq("pensionerId", pensionerId))
+      .collect();
+  },
+});

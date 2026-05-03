@@ -208,7 +208,7 @@ export default function ReportsPage() {
               No overdue pensioners — excellent compliance!
             </div>
           ) : (
-            <table className='w-full text-xs min-w-[540px]'>
+            <table className='w-full text-xs min-w-135'>
               <thead>
                 <tr className='bg-g1'>
                   {[
@@ -306,9 +306,9 @@ export default function ReportsPage() {
                     {/* Action */}
                     <td className='px-4 py-3'>
                       <Link
-                        href={`/dashboard/admin/pensioners/${p._id}/verify`}
+                        href={`/dashboard/admin/pensioners/${p._id}/`}
                         className='flex items-center gap-0.5 text-[10px] font-semibold text-g1 hover:underline whitespace-nowrap'>
-                        Verify
+                        View
                         <ChevronRight className='h-3 w-3' />
                       </Link>
                     </td>

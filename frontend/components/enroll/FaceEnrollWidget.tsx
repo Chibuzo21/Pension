@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors";
+import { Doc, Id } from "@/convex/_generated/dataModel";
 
 type Stage = "camera" | "capturing" | "preview" | "saving" | "done";
 
@@ -14,13 +15,8 @@ const FRAME_COUNT = 10; // how many frames to capture for enrolment
 const FRAME_MS = 200; // ms between frames
 
 interface Props {
-  pensionerId: string;
-  pensioner: {
-    fullName: string;
-    pensionId: string;
-    faceEncoding?: string | null;
-    voiceEncoding?: string | null;
-  };
+  pensionerId: Id<"pensioners">;
+  pensioner: Doc<"pensioners">;
   onDone?: () => void;
 }
 
@@ -39,13 +35,25 @@ export default function FaceEnrolWidget({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  useEffect(() => {
-    startCamera();
-    return () => closeCamera();
-  }, []);
+  const isMounted = useRef(true);
 
+  useEffect(() => {
+    isMounted.current = true;
+    startCamera();
+
+    return () => {
+      isMounted.current = false;
+      closeCamera();
+    };
+  }, []);
   async function startCamera() {
     try {
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
@@ -54,11 +62,19 @@ export default function FaceEnrolWidget({
         },
         audio: false,
       });
+
+      if (!isMounted.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
       streamRef.current = stream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
+
       setStage("camera");
     } catch {
       toast.error("Camera access denied — please allow camera permissions");
@@ -179,12 +195,18 @@ export default function FaceEnrolWidget({
       setSaving(false);
     }
   }
-
-  function reset() {
+  async function reset() {
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setSnapshot(null);
     setFrames([]);
     setFrameCount(0);
-    startCamera();
+    setStage("camera"); // ← mount the video element first
+
+    // Small tick to let React re-render and remount the video element
+    await new Promise((r) => setTimeout(r, 50));
+    await startCamera();
   }
 
   return (
@@ -213,7 +235,8 @@ export default function FaceEnrolWidget({
               </div>
               <div>
                 <p className='text-white text-sm text-center font-medium mb-2 drop-shadow'>
-                  Look naturally at the camera — blink or move slightly
+                  Look naturally at the camera — blink or move slightly to
+                  verify it's you
                 </p>
                 <Progress
                   value={(frameCount / FRAME_COUNT) * 100}
@@ -268,7 +291,12 @@ export default function FaceEnrolWidget({
 
       {stage === "preview" && (
         <div className='flex gap-2'>
-          <Button variant='outline' onClick={reset} disabled={saving}>
+          <Button
+            variant='outline'
+            onClick={() => {
+              reset();
+            }}
+            disabled={saving}>
             <RotateCcw className='h-3.5 w-3.5 mr-1.5' />
             Retake
           </Button>

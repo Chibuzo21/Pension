@@ -10,6 +10,7 @@
 
 import type * as auditLogs from "../auditLogs.js";
 import type * as biometrics from "../biometrics.js";
+import type * as correctionRequests from "../correctionRequests.js";
 import type * as crons from "../crons.js";
 import type * as documents from "../documents.js";
 import type * as http from "../http.js";
@@ -30,6 +31,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auditLogs: typeof auditLogs;
   biometrics: typeof biometrics;
+  correctionRequests: typeof correctionRequests;
   crons: typeof crons;
   documents: typeof documents;
   http: typeof http;

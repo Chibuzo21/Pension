@@ -28,13 +28,13 @@ export default function EnrollTopBar({
       <div className='flex-1 min-w-0'>
         <h2 className='text-sm font-bold text-ink'>Biometric Enrolment</h2>
         <p className='text-[11px] text-muted-foreground truncate'>
-          {pensioner.fullName} · {pensioner.pensionId}
+          {pensioner?.fullName} · {pensioner?.pensionId}
         </p>
       </div>
       <Badge
         variant='outline'
-        className={`text-[10px] shrink-0 ${levelColor[pensioner.biometricLevel ?? "L0"]}`}>
-        {pensioner.biometricLevel ?? "L0"}
+        className={`text-[10px] shrink-0 ${levelColor[pensioner?.biometricLevel ?? "L0"]}`}>
+        {pensioner?.biometricLevel ?? "L0"}
       </Badge>
     </div>
   );

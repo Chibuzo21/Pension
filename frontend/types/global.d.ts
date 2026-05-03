@@ -20,13 +20,19 @@ export type DocumentType =
   | "Verification Certificate"
   | "Death Certificate";
 
+export type OnboardingStep =
+  | "personal"
+  | "face"
+  | "voice"
+  | "docs"
+  | "complete";
 declare global {
   interface CustomJwtSessionClaims {
     metadata?: {
       role?: UserRole;
+      onboardingStep?: OnboardingStep;
     };
     unsafeMetadata?: {
-      nin?: string;
       onboardingComplete?: boolean; // 👈 add this
     };
   }

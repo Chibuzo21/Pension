@@ -10,7 +10,8 @@ const isPublicRoute = createRouteMatcher([
   "/crisis",
   "/partner",
   "/api/clerk-webhook(.*)",
-  "/api/onboarding/(.*)",
+  "/report-death",
+  "/api/onboarding/(.*)", // covers advance-step too
 ]);
 
 const isHomeRoute = createRouteMatcher(["/"]);
@@ -19,12 +20,51 @@ const isAdminRoute = createRouteMatcher(["/dashboard/admin(.*)"]);
 const isPortalRoute = createRouteMatcher(["/dashboard/portal(.*)"]);
 const isDashboardRoot = createRouteMatcher(["/dashboard"]);
 
+// Individual onboarding step routes — used to enforce forward-only navigation
+const isStepPersonal = createRouteMatcher(["/onboarding"]);
+const isStepFace = createRouteMatcher(["/onboarding/face"]);
+const isStepVoice = createRouteMatcher(["/onboarding/voice"]);
+const isStepDocs = createRouteMatcher(["/onboarding/docs"]);
+
+type OnboardingStep = "personal" | "face" | "voice" | "docs" | "complete";
+
+const STEP_ORDER: OnboardingStep[] = [
+  "personal",
+  "face",
+  "voice",
+  "docs",
+  "complete",
+];
+
+function stepToPath(step: OnboardingStep): string {
+  switch (step) {
+    case "personal":
+      return "/onboarding";
+    case "face":
+      return "/onboarding/face";
+    case "voice":
+      return "/onboarding/voice";
+    case "docs":
+      return "/onboarding/docs";
+    case "complete":
+      return "/dashboard/portal";
+  }
+}
+
+function requestedStep(request: Request): OnboardingStep | null {
+  if (isStepPersonal(request as any)) return "personal";
+  if (isStepFace(request as any)) return "face";
+  if (isStepVoice(request as any)) return "voice";
+  if (isStepDocs(request as any)) return "docs";
+  return null;
+}
+
 export default clerkMiddleware(async (auth, request) => {
   // 1. Home → overview
   if (isHomeRoute(request))
     return NextResponse.redirect(new URL("/overview", request.url));
 
-  // 2. Public routes — no auth needed
+  // 2. Fully public — no auth check
   if (isPublicRoute(request)) return NextResponse.next();
 
   const { userId, sessionClaims } = await auth();
@@ -32,29 +72,45 @@ export default clerkMiddleware(async (auth, request) => {
   const isStaff = role === "admin" || role === "officer";
   const isPensioner = role === "pensioner";
 
-  // 3. Unauthenticated → sign-in
+  // 3. Not signed in → sign-in
   if (!userId) {
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirect_url", request.url);
     return NextResponse.redirect(signInUrl);
   }
 
-  // 4. Onboarding gate
+  // ── Onboarding routes ──────────────────────────────────────────────────
   if (isOnboardingRoute(request)) {
-    // Staff should never be on onboarding
+    // Staff never onboard as pensioners
     if (isStaff)
       return NextResponse.redirect(new URL("/dashboard/admin", request.url));
-    // Pensioners who've been linked (have a role) are done with onboarding
-    if (isPensioner)
+
+    const savedStep =
+      (sessionClaims?.metadata?.onboardingStep as OnboardingStep | undefined) ??
+      "personal";
+
+    // Fully onboarded pensioner → kick to portal
+    if (savedStep === "complete")
       return NextResponse.redirect(new URL("/dashboard/portal", request.url));
-    // No role yet → let them through to complete onboarding
+
+    // Prevent jumping ahead — redirect to the saved step
+    const reqStep = requestedStep(request);
+    if (reqStep) {
+      const savedIdx = STEP_ORDER.indexOf(savedStep);
+      const reqIdx = STEP_ORDER.indexOf(reqStep);
+      if (reqIdx > savedIdx)
+        return NextResponse.redirect(
+          new URL(stepToPath(savedStep), request.url),
+        );
+    }
+
     return NextResponse.next();
   }
 
-  // 5. Force unlinked users (no role) to onboarding
+  // ── Unregistered user (no role yet) → start onboarding ────────────────
   if (!role) return NextResponse.redirect(new URL("/onboarding", request.url));
 
-  // 6. /dashboard root → role-based redirect
+  // ── /dashboard root → role redirect ───────────────────────────────────
   if (isDashboardRoot(request)) {
     if (isStaff)
       return NextResponse.redirect(new URL("/dashboard/admin", request.url));
@@ -62,7 +118,16 @@ export default clerkMiddleware(async (auth, request) => {
       return NextResponse.redirect(new URL("/dashboard/portal", request.url));
   }
 
-  // 7. Cross-role protection
+  // ── Pensioner trying to reach portal before completing onboarding ──────
+  if (isPensioner && isPortalRoute(request)) {
+    const savedStep =
+      (sessionClaims?.metadata?.onboardingStep as OnboardingStep | undefined) ??
+      "personal";
+    if (savedStep !== "complete")
+      return NextResponse.redirect(new URL(stepToPath(savedStep), request.url));
+  }
+
+  // ── Cross-role protection ──────────────────────────────────────────────
   if (isAdminRoute(request) && !isStaff)
     return NextResponse.redirect(new URL("/dashboard/portal", request.url));
   if (isPortalRoute(request) && !isPensioner)

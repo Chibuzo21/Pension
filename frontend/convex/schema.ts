@@ -7,6 +7,7 @@ export default defineSchema({
     clerkId: v.string(),
     username: v.string(),
     email: v.string(),
+
     role: v.union(
       v.literal("admin"),
       v.literal("officer"),
@@ -23,26 +24,32 @@ export default defineSchema({
 
   // ── Pensioners ─────────────────────────────────────────────────
   pensioners: defineTable({
-    pensionId: v.string(), // e.g. PEN-2024-00042
+    pensionId: v.string(),
     fullName: v.string(),
     userId: v.optional(v.string()),
-    faceEmbedding: v.optional(v.string()), //
-    dob: v.string(), // ISO date string
+    faceEmbedding: v.optional(v.string()),
+    dob: v.string(),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     address: v.optional(v.string()),
-    bvn: v.optional(v.string()), // 11 digits
-    nin: v.optional(v.string()), // 11 digits
+    bvn: v.optional(v.string()),
+    nin: v.optional(v.string()),
     dateOfEmployment: v.optional(v.string()),
     dateOfRetirement: v.optional(v.string()),
-    lastMda: v.optional(v.string()), // last Ministry/Dept/Agency
+    lastMda: v.optional(v.string()),
     subTreasury: v.optional(v.string()),
     bankName: v.optional(v.string()),
     accountNumber: v.optional(v.string()),
     gratuityAmount: v.number(),
     gratuityPaid: v.number(),
     verificationCode: v.optional(v.string()),
-    createdByUserId: v.id("users"),
+
+    // NOW OPTIONAL — only set when an admin/officer created the record
+    createdByUserId: v.optional(v.id("users")),
+
+    // NEW — true when the pensioner registered themselves
+    selfRegistered: v.optional(v.boolean()),
+
     status: v.union(
       v.literal("active"),
       v.literal("deceased"),
@@ -51,21 +58,22 @@ export default defineSchema({
       v.literal("dormant"),
       v.literal("incapacitated"),
     ),
+
     // Biometric fields
-    faceEncoding: v.optional(v.string()), // JSON-serialised 512-float array
-    referencePhotoStorageId: v.optional(v.string()), // Convex storage ID
+    faceEncoding: v.optional(v.string()),
+    referencePhotoStorageId: v.optional(v.string()),
     fingerprintCredentialId: v.optional(v.string()),
     fingerprintPublicKey: v.optional(v.string()),
     fingerprintSignCount: v.optional(v.number()),
     fingerprintAaguid: v.optional(v.string()),
-    voiceEncoding: v.optional(v.string()), // JSON-serialised 40-float MFCC
+    voiceEncoding: v.optional(v.string()),
     biometricLevel: v.union(
-      v.literal("L0"), // no biometrics
-      v.literal("L1"), // face only
-
-      v.literal("L2"), // face + voice (partial)
-      v.literal("L3"), // full multi-modal
+      v.literal("L0"),
+      v.literal("L1"),
+      v.literal("L2"),
+      v.literal("L3"),
     ),
+
     // Death recording
     dateOfDeath: v.optional(v.string()),
     deathCertificateStorageId: v.optional(v.string()),
@@ -94,17 +102,17 @@ export default defineSchema({
     pensionerId: v.id("pensioners"),
     fullName: v.string(),
     relationship: v.string(),
-    phone: v.string(), // required — primary contact channel
-    address: v.optional(v.string()), // optional but useful for correspondence
+    phone: v.string(),
+    address: v.optional(v.string()),
     bvn: v.optional(v.string()),
     nin: v.optional(v.string()),
-
     addedByUserId: v.id("users"),
     addedAt: v.number(),
-    isVerified: v.optional(v.boolean()), // defaults to falsy if absent
-    verifiedByUserId: v.optional(v.id("users")), // who toggled verified
-    verifiedAt: v.optional(v.number()), // when it was verified
+    isVerified: v.optional(v.boolean()),
+    verifiedByUserId: v.optional(v.id("users")),
+    verifiedAt: v.optional(v.number()),
   }).index("by_pensioner", ["pensionerId"]),
+
   // ── Death Claims ───────────────────────────────────────────────
   deathClaims: defineTable({
     pensionerId: v.id("pensioners"),
@@ -131,7 +139,7 @@ export default defineSchema({
       v.literal("Verification Certificate"),
       v.literal("Death Certificate"),
     ),
-    storageId: v.string(), // Convex file storage ID
+    storageId: v.string(),
     filename: v.string(),
     mimeType: v.string(),
     uploadedBy: v.id("users"),
@@ -148,7 +156,6 @@ export default defineSchema({
       v.literal("MANUAL_OVERRIDE"),
       v.literal("PENDING"),
     ),
-    // Per-modality scores (0.0 – 1.0)
     livenessScore: v.optional(v.number()),
     faceMatchScore: v.optional(v.number()),
     fingerprintScore: v.optional(v.number()),
@@ -164,7 +171,7 @@ export default defineSchema({
     ),
     captureStorageId: v.optional(v.string()),
     overrideReason: v.optional(v.string()),
-    verificationDate: v.string(), // ISO datetime
+    verificationDate: v.string(),
     ipAddress: v.optional(v.string()),
   })
     .index("by_pensioner", ["pensionerId"])
@@ -202,11 +209,32 @@ export default defineSchema({
     message: v.optional(v.string()),
   }).index("by_pensioner", ["pensionerId"]),
 
-  // ── Login Rate Limiting ────────────────────────────────────────
   loginAttempts: defineTable({
     ipAddress: v.string(),
     clerkId: v.optional(v.string()),
     success: v.boolean(),
     attemptedAt: v.string(),
   }).index("by_ip", ["ipAddress"]),
+
+  correctionRequests: defineTable({
+    pensionerId: v.id("pensioners"),
+    submittedByUserId: v.optional(v.id("users")), // the pensioner's user record
+    // Which field is being corrected
+    field: v.union(v.literal("fullName"), v.literal("nin"), v.literal("bvn")),
+    currentValue: v.optional(v.string()), // snapshot of current value at submission
+    requestedValue: v.string(), // what the pensioner wants it changed to
+    supportingNote: v.optional(v.string()), // optional explanation from pensioner
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    // Admin review
+    reviewedByUserId: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    reviewNote: v.optional(v.string()), // reason for rejection or approval note
+  })
+    .index("by_pensioner", ["pensionerId"])
+    .index("by_status", ["status"])
+    .index("by_pensioner_status", ["pensionerId", "status"]),
 });

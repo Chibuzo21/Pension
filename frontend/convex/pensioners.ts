@@ -28,7 +28,6 @@ export const list = query({
 
     const page = await q.paginate(paginationOpts);
 
-    // Attach latest verification to each pensioner
     const enriched = await Promise.all(
       page.page.map(async (p) => {
         const latestVerification = await ctx.db
@@ -101,10 +100,20 @@ export const getById = query({
 export const getByPensionId = query({
   args: { pensionId: v.string() },
   handler: async (ctx, { pensionId }) => {
-    return ctx.db
+    const pensioner = await ctx.db
       .query("pensioners")
       .withIndex("by_pensionId", (q) => q.eq("pensionId", pensionId))
-      .first();
+      .unique();
+
+    if (!pensioner) return null;
+
+    // Only return what the public form needs — don't expose sensitive fields
+    return {
+      _id: pensioner._id,
+      fullName: pensioner.fullName,
+      pensionId: pensioner.pensionId,
+      status: pensioner.status,
+    };
   },
 });
 
@@ -121,10 +130,8 @@ export const getStats = query({
     const l1l2 = all.filter(
       (p) => p.biometricLevel === "L1" || p.biometricLevel === "L2",
     ).length;
-    // const l1 = all.filter((p) => p.biometricLevel === "L1").length;
     const l0 = all.filter((p) => p.biometricLevel === "L0").length;
 
-    // Verifications this month
     const now = new Date();
     const firstOfMonth = new Date(
       now.getFullYear(),
@@ -156,7 +163,7 @@ export const getStats = query({
     };
   },
 });
-// Get a pensioner by email (for auto-linking on signup)
+
 export const getByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, { email }) => {
@@ -167,7 +174,6 @@ export const getByEmail = query({
   },
 });
 
-// Link a Convex userId onto the pensioner record
 export const linkUser = mutation({
   args: {
     pensionerId: v.id("pensioners"),
@@ -187,15 +193,27 @@ export const linkUser = mutation({
   },
 });
 
-// ── Mutations ──────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────
+
 function generateCode(length = 6) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const array = new Uint8Array(length);
   crypto.getRandomValues(array);
-
   return Array.from(array, (x) => chars[x % chars.length]).join("");
 }
 
+function generatePensionId(): string {
+  const year = new Date().getFullYear();
+  const rand = Math.floor(10000 + Math.random() * 90000);
+  return `PEN-${year}-${rand}`;
+}
+
+// ── Mutations ──────────────────────────────────────────────────────
+
+/**
+ * Admin/officer creates a pensioner record on behalf of a pensioner.
+ * createdByUserId is required here.
+ */
 export const create = mutation({
   args: {
     pensionId: v.string(),
@@ -217,7 +235,6 @@ export const create = mutation({
     createdByUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Check duplicate pension ID
     const existing = await ctx.db
       .query("pensioners")
       .withIndex("by_pensionId", (q) => q.eq("pensionId", args.pensionId))
@@ -227,6 +244,7 @@ export const create = mutation({
 
     const id = await ctx.db.insert("pensioners", {
       ...args,
+      selfRegistered: false,
       status: "active",
       biometricLevel: "L0",
       verificationCode: generateCode(),
@@ -244,6 +262,114 @@ export const create = mutation({
   },
 });
 
+export const selfRegister = mutation({
+  args: {
+    fullName: v.string(),
+    dob: v.string(),
+    nin: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    address: v.optional(v.string()),
+    bvn: v.optional(v.string()),
+    dateOfEmployment: v.optional(v.string()),
+    dateOfRetirement: v.optional(v.string()),
+    lastMda: v.optional(v.string()),
+    subTreasury: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    accountNumber: v.optional(v.string()),
+    gratuityAmount: v.optional(v.number()),
+    userId: v.id("users"),
+    totalGratuity: v.optional(v.number()),
+    gratuityPaid: v.optional(v.number()),
+    isDeceased: v.optional(v.boolean()),
+    dateOfDeath: v.optional(v.string()),
+    registrantName: v.optional(v.string()),
+    registrantRelationship: v.optional(v.string()),
+    registrantPhone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const {
+      userId,
+      isDeceased,
+      dateOfDeath,
+      registrantName,
+      registrantRelationship,
+      registrantPhone,
+      ...data
+    } = args;
+
+    // Prevent duplicate NIN registrations
+    const existingNin = await ctx.db
+      .query("pensioners")
+      .withIndex("by_nin", (q) => q.eq("nin", data.nin))
+      .first();
+    if (existingNin)
+      throw new Error(
+        "A pensioner record with this NIN already exists. Please contact support.",
+      );
+
+    // Auto-generate a unique pension ID
+    let pensionId = generatePensionId();
+    let collision = await ctx.db
+      .query("pensioners")
+      .withIndex("by_pensionId", (q) => q.eq("pensionId", pensionId))
+      .first();
+    while (collision) {
+      pensionId = generatePensionId();
+      collision = await ctx.db
+        .query("pensioners")
+        .withIndex("by_pensionId", (q) => q.eq("pensionId", pensionId))
+        .first();
+    }
+
+    // Insert first — deceased flag affects initial status
+    const id = await ctx.db.insert("pensioners", {
+      ...data,
+      pensionId,
+      gratuityAmount: data.gratuityAmount ?? 0,
+      gratuityPaid: 0,
+      selfRegistered: true,
+      // Suspend immediately if registering a deceased pensioner
+      status: isDeceased ? "suspended" : "active",
+      biometricLevel: "L0",
+      verificationCode: generateCode(),
+      userId,
+      // Store death date on the record if provided
+      dateOfDeath: isDeceased ? dateOfDeath : undefined,
+    });
+
+    // Link the user record back to this pensioner
+    await ctx.db.patch(userId, { pensionerId: id, role: "pensioner" });
+    const check = await ctx.db.get(userId);
+    console.log("✅ After patch:", {
+      userId,
+      pensionerId: check?.pensionerId,
+      role: check?.role,
+    });
+
+    // Audit log for normal registration
+    await ctx.db.insert("auditLogs", {
+      userId,
+      action: "PENSIONER_SELF_REGISTERED",
+      entityType: "pensioner",
+      entityId: id,
+      details: `Pensioner self-registered: ${data.fullName} (${pensionId})`,
+    });
+
+    // Additional audit log if deceased registration
+    if (isDeceased) {
+      await ctx.db.insert("auditLogs", {
+        userId,
+        action: "REGISTERED_AS_DECEASED",
+        entityType: "pensioner",
+        entityId: id,
+        details: `Registered by ${registrantName ?? "unknown"} (${registrantRelationship ?? "unknown"}), phone: ${registrantPhone ?? "unknown"}`,
+      });
+    }
+
+    return id;
+  },
+});
 export const update = mutation({
   args: {
     id: v.id("pensioners"),
@@ -318,7 +444,7 @@ export const updateBiometric = mutation({
       v.literal("L2"),
       v.literal("L3"),
     ),
-    updatedByUserId: v.id("users"),
+    updatedByUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, { id, updatedByUserId, ...biometricFields }) => {
     await ctx.db.patch(id, biometricFields);
@@ -333,10 +459,11 @@ export const updateBiometric = mutation({
 });
 
 // ── Next of Kin ────────────────────────────────────────────────────
+
 export const upsertNextOfKin = mutation({
   args: {
     pensionerId: v.id("pensioners"),
-    fullName: v.string(), // ✅ was "name"
+    fullName: v.string(),
     relationship: v.string(),
     phone: v.string(),
     bvn: v.optional(v.string()),
@@ -355,7 +482,6 @@ export const upsertNextOfKin = mutation({
       await ctx.db.patch(existing._id, args);
     } else {
       await ctx.db.insert("nextOfKin", {
-        // ✅ all required fields present
         ...args,
         isVerified: false,
         addedByUserId: updatedByUserId,
@@ -373,12 +499,27 @@ export const upsertNextOfKin = mutation({
   },
 });
 
-export const getByNin = query({
-  args: { nin: v.string() },
-  handler: async (ctx, { nin }) => {
-    return ctx.db
-      .query("pensioners")
-      .withIndex("by_nin", (q) => q.eq("nin", nin))
-      .first();
+export const updateProfile = mutation({
+  args: {
+    pensionerId: v.id("pensioners"),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    address: v.optional(v.string()),
+    lastMda: v.optional(v.string()),
+    subTreasury: v.optional(v.string()),
+    dateOfEmployment: v.optional(v.string()),
+    dateOfRetirement: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    accountNumber: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { pensionerId, ...fields } = args;
+
+    // Strip undefined values so we don't overwrite existing data with nulls
+    const patch = Object.fromEntries(
+      Object.entries(fields).filter(([, v]) => v !== undefined),
+    );
+
+    await ctx.db.patch(pensionerId, patch);
   },
 });

@@ -29,7 +29,7 @@ export function useVoiceVerify({
   useEffect(() => {
     if (!active) return;
     fetch(
-      `${process.env.NEXT_PUBLIC_SPEAKER_SERVICE_URL ?? "http://localhost:8000"}/phrases`,
+      `${process.env.SPEAKER_SERVICE_URL ?? "http://localhost:8000"}/phrases`,
     )
       .then((r) => r.json())
       .then((data: { phrases: Phrase[] }) => {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -9,7 +9,7 @@ import { getErrorMessage } from "@/lib/errors";
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId, sessionClaims } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -30,36 +30,35 @@ export async function POST(req: NextRequest) {
     const parsed = JSON.parse(encoding) as number[];
     if (!Array.isArray(parsed) || parsed.length !== 512)
       return NextResponse.json(
-        { error: "Invalid encoding: expected 128-float array" },
+        { error: "Invalid encoding: expected 512-float array" },
         { status: 400 },
       );
 
-    const [pensioner, convexUser] = await Promise.all([
-      convex.query(api.pensioners.getById, {
-        id: pensionerId as Id<"pensioners">,
-      }),
-      convex.query(api.users.getByClerkId, { clerkId: userId }),
-    ]);
+    const pensioner = await convex.query(api.pensioners.getById, {
+      id: pensionerId as Id<"pensioners">,
+    });
 
     if (!pensioner)
       return NextResponse.json(
         { error: "Pensioner not found" },
         { status: 404 },
       );
+
+    const convexUser = await convex.query(api.users.getByClerkId, {
+      clerkId: userId,
+    });
+
     if (!convexUser)
       return NextResponse.json(
         { error: "User not found in Convex" },
         { status: 404 },
       );
 
-    // Guard against silent overwrite — require explicit force=true to re-enrol.
-    // The verify page never passes force, so it receives 409 and ignores it.
-    // The enrolment page passes force=true, so it always succeeds.
+    // Guard against silent overwrite
     if (pensioner.faceEncoding && !force) {
       return NextResponse.json(
         {
-          error:
-            "Face already enrolled for this pensioner. Pass force=true to re-enrol.",
+          error: "Face already enrolled. Pass force=true to re-enrol.",
           alreadyEnrolled: true,
         },
         { status: 409 },
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     const hasVoice = !!pensioner.voiceEncoding;
-    const newLevel = hasVoice ? "L3" : "L2";
+    const newLevel = hasVoice ? "L3" : "L1";
 
     await convex.mutation(api.pensioners.updateBiometric, {
       id: pensionerId as Id<"pensioners">,
@@ -76,6 +75,30 @@ export async function POST(req: NextRequest) {
       updatedByUserId: convexUser._id,
       ...(referencePhotoStorageId ? { referencePhotoStorageId } : {}),
     });
+
+    // ── Advance onboarding step if pensioner is still in onboarding ──────
+    const currentStep = sessionClaims?.metadata?.onboardingStep as
+      | string
+      | undefined;
+    if (currentStep === "face" || !currentStep) {
+      const client = await clerkClient();
+      await client.users.updateUserMetadata(userId, {
+        publicMetadata: {
+          ...sessionClaims?.metadata,
+          onboardingStep: "voice",
+          biometricLevel: newLevel,
+        },
+      });
+    } else {
+      // Already past onboarding — just update biometricLevel
+      const client = await clerkClient();
+      await client.users.updateUserMetadata(userId, {
+        publicMetadata: {
+          ...sessionClaims?.metadata,
+          biometricLevel: newLevel,
+        },
+      });
+    }
 
     return NextResponse.json({ ok: true, level: newLevel });
   } catch (err) {

@@ -1,16 +1,18 @@
-import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { toast } from "sonner";
-import { StatusAction } from "@/types/pensioner";
 import { Id } from "@/convex/_generated/dataModel";
+import { useState } from "react";
+import { toast } from "sonner";
 import { getErrorMessage } from "./errors";
+import { uploadToConvex } from "./uploadToConvex";
+import { StatusAction } from "@/types/pensioner";
 
 export function useDeathClaimAction(
   pensionerId: Id<"pensioners">,
   convexUserId: Id<"users"> | null,
 ) {
   const submitDeathClaim = useMutation(api.nextOfKin.submitDeathClaim);
+  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(
@@ -23,15 +25,25 @@ export function useDeathClaimAction(
       toast.error("Select the next of kin submitting the claim");
       return;
     }
+
     setSaving(true);
     try {
-      // TODO: upload claimFile to Convex storage and use returned storageId
+      // Upload certificate if provided, otherwise mark as absent
+      let deathCertificateStorageId = "no_cert";
+      if (claimFile) {
+        deathCertificateStorageId = await uploadToConvex(
+          claimFile,
+          generateUploadUrl,
+        );
+      }
+
       await submitDeathClaim({
-        pensionerId: pensionerId as Id<"pensioners">,
+        pensionerId,
         claimedByNextOfKinId: claimNokId as Id<"nextOfKin">,
-        deathCertificateStorageId: claimFile ? "pending_upload" : "no_cert",
+        deathCertificateStorageId,
         submittedByUserId: convexUserId,
       });
+
       toast.success("Death claim submitted — account suspended pending review");
       onSuccess();
     } catch (err) {

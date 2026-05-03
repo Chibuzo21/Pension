@@ -7,19 +7,16 @@ import { useConvexUser } from "@/lib/useConvexUser";
 import { useVoiceEnrol } from "@/lib/useVoiceEnrol";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
-import { Id } from "@/convex/_generated/dataModel";
+import { Doc, Id } from "@/convex/_generated/dataModel";
 
 const PASSPHRASE =
   "My name is [First Name] and I am verifying my pension today.";
 
 interface Props {
   pensionerId: string;
-  pensioner: {
-    fullName: string;
-    pensionId: string;
-    faceEncoding?: string | null;
-  };
+  pensioner: Doc<"pensioners">;
   onDone?: () => void;
+  byUserId?: string | null;
 }
 
 type Stage = "ready" | "recording" | "processing" | "done" | "failed";
@@ -28,8 +25,10 @@ export default function VoiceEnrolWidget({
   pensionerId,
   pensioner,
   onDone,
+  byUserId,
 }: Props) {
   const { convexUserId } = useConvexUser();
+  const effectiveUserId = byUserId ?? convexUserId;
   const updateBiometric = useMutation(api.pensioners.updateBiometric);
   const [stage, setStage] = useState<Stage>("ready");
   const [error, setError] = useState("");
@@ -59,8 +58,8 @@ export default function VoiceEnrolWidget({
         await updateBiometric({
           id: pensionerId as Id<"pensioners">,
           voiceEncoding: JSON.stringify(data.embedding),
-          biometricLevel: !!pensioner.faceEncoding ? "L3" : "L1",
-          updatedByUserId: convexUserId!,
+          biometricLevel: !!pensioner.faceEncoding ? "L3" : "L2",
+          updatedByUserId: effectiveUserId! as Id<"users">,
         });
 
         toast.success(`Voice enrolled for ${pensioner.fullName}`);
@@ -97,7 +96,7 @@ export default function VoiceEnrolWidget({
       {/* Body */}
       <div className='p-4 space-y-4'>
         <p className='text-[11px] text-slate'>
-          Ask the pensioner to say clearly:
+          Please say the following phrase clearly:
         </p>
         <div className='bg-smoke text-ink text-center font-mono text-[13px] py-3 px-4 rounded-lg italic'>
           "{PASSPHRASE}"
@@ -134,7 +133,7 @@ export default function VoiceEnrolWidget({
               )}
               <p className='text-[12px] text-slate'>
                 {takes.length === 0
-                  ? "Click Record for Take 1. The pensioner speaks the passphrase each time."
+                  ? "Click Record for Take 1 and speak the passphrase clearly each time."
                   : `${takes.length} take${takes.length > 1 ? "s" : ""} done — click Record for Take ${currentTake}.`}
               </p>
             </div>
@@ -156,13 +155,13 @@ export default function VoiceEnrolWidget({
 
         {/* Recording */}
         {recording && (
-          <div className='border-2 border-[var(--red)] bg-[#fff5f5] rounded-[9px] p-5 text-center'>
+          <div className='border-2 border-red bg-[#fff5f5] rounded-[9px] p-5 text-center'>
             <span className='text-[40px] block mb-2'>🔴</span>
             <div className='flex items-center justify-center gap-1.5 h-7 my-3'>
               {[...Array(5)].map((_, i) => (
                 <div
                   key={i}
-                  className='w-1 rounded-full bg-[var(--red)] animate-[wave_0.8s_ease-in-out_infinite]'
+                  className='w-1 rounded-full bg-red animate-[wave_0.8s_ease-in-out_infinite]'
                   style={{
                     animationDelay: `${[0, 0.1, 0.2, 0.15, 0.05][i]}s`,
                     height: 5,
@@ -170,23 +169,23 @@ export default function VoiceEnrolWidget({
                 />
               ))}
             </div>
-            <div className='text-[var(--red)] font-black text-[28px] leading-none mb-2'>
+            <div className='text-red font-black text-[28px] leading-none mb-2'>
               {countdown}
             </div>
-            <p className='text-[12px] text-[var(--red)] font-medium'>
-              Recording Take {currentTake}… ask pensioner to speak now
+            <p className='text-[12px] text-red font-medium'>
+              Recording Take {currentTake}… speak now
             </p>
           </div>
         )}
 
         {/* Processing */}
         {stage === "processing" && (
-          <div className='border-2 border-dashed border-[var(--mist)] rounded-[9px] p-5 text-center'>
+          <div className='border-2 border-dashed border-mist rounded-[9px] p-5 text-center'>
             <span className='text-[40px] block mb-2'>⏳</span>
-            <p className='font-bold text-[14px] text-[var(--ink)] mb-1'>
+            <p className='font-bold text-[14px] text-ink mb-1'>
               Building voiceprint from {takesRequired} samples…
             </p>
-            <p className='text-[11px] text-[var(--slate)]'>
+            <p className='text-[11px] text-slate'>
               Averaging embeddings for best accuracy
             </p>
           </div>
@@ -194,9 +193,9 @@ export default function VoiceEnrolWidget({
 
         {/* Done */}
         {stage === "done" && (
-          <div className='border-2 border-[var(--g1)] bg-[#f0faf0] rounded-[9px] p-5 text-center'>
+          <div className='border-2 border-g1 bg-[#f0faf0] rounded-[9px] p-5 text-center'>
             <span className='text-[40px] block mb-2'>✅</span>
-            <p className='text-[var(--g1)] font-semibold text-[14px] mb-1.5'>
+            <p className='text-g1] font-semibold text-[14px] mb-1.5'>
               Voice Enrolled!
             </p>
             <p className='text-[11px] text-slate'>

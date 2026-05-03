@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { action, mutation, query } from "./_generated/server";
 
 // ── Users ──────────────────────────────────────────────────────────
-
+//convex/users.ts
 export const getByClerkId = query({
   args: { clerkId: v.string() },
   handler: async (ctx, { clerkId }) => {
@@ -25,6 +25,7 @@ export const upsertFromClerk = mutation({
     clerkId: v.string(),
     email: v.string(),
     username: v.string(),
+
     role: v.optional(
       v.union(v.literal("admin"), v.literal("officer"), v.literal("pensioner")),
     ),
@@ -39,6 +40,7 @@ export const upsertFromClerk = mutation({
       await ctx.db.patch(existing._id, {
         email,
         username,
+
         lastLogin: new Date().toISOString(), // 👈 string, matches schema
         ...(role ? { role } : {}),
       });
@@ -49,6 +51,7 @@ export const upsertFromClerk = mutation({
       clerkId,
       email,
       username,
+
       role: role ?? "pensioner",
       isActive: true,
       lastLogin: new Date().toISOString(), // 👈 string, matches schema

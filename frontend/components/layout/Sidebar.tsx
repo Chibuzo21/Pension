@@ -9,14 +9,13 @@ import {
   Users,
   UserPlus,
   Skull,
-  Camera,
-  Mic,
   BarChart3,
   ScrollText,
   KeyRound,
   ShieldCheck,
   FileText,
   CheckCircle,
+  UserCog,
 } from "lucide-react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
@@ -43,24 +42,19 @@ const adminNav = [
         icon: UserPlus,
       },
       {
+        href: "/dashboard/admin/verify",
+        label: "Verify",
+        icon: CheckCircle,
+      },
+      {
+        href: "/dashboard/admin/corrections",
+        label: "Data Corrections",
+        icon: UserCog,
+      },
+      {
         href: "/dashboard/admin/deaths",
         label: "Deaths & Dormancy",
         icon: Skull,
-      },
-    ],
-  },
-  {
-    section: "Biometrics",
-    items: [
-      {
-        href: "/dashboard/admin/enroll/face",
-        label: "Enrol Face",
-        icon: Camera,
-      },
-      {
-        href: "/dashboard/admin/enroll/voice",
-        label: "Enrol Voice",
-        icon: Mic,
       },
     ],
   },
@@ -105,6 +99,11 @@ const pensionerNav = [
         href: "/dashboard/portal/documents",
         label: "My Documents",
         icon: FileText,
+      },
+      {
+        href: "/dashboard/portal/edit",
+        label: "Edit Profile",
+        icon: UserCog,
       },
     ],
   },

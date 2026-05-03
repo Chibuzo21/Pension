@@ -1,5 +1,5 @@
 "use client";
-
+//dashboard/admin/deaths/page.tsx
 import { useState } from "react";
 import { useConvexUser } from "@/lib/useConvexUser";
 import { useDeathsData } from "@/lib/useDeathsData";
