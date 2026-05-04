@@ -40,6 +40,7 @@ export default function NavPills() {
     { label: "Crisis", href: "/crisis", icon: "📊" },
     { label: "ROI", href: "/roi", icon: "💰" },
     { label: "Partner", href: "/partner", icon: "🤝" },
+    { label: "Report Death", href: "/report-death", icon: "⚰️" },
   ];
 
   // Role-gated routes

@@ -49,6 +49,17 @@ export default defineSchema({
 
     // NEW — true when the pensioner registered themselves
     selfRegistered: v.optional(v.boolean()),
+    nok: v.optional(
+      v.array(
+        v.object({
+          fullName: v.string(),
+          relationship: v.string(),
+          phone: v.string(),
+          nin: v.optional(v.string()),
+          address: v.optional(v.string()),
+        }),
+      ),
+    ),
 
     status: v.union(
       v.literal("active"),

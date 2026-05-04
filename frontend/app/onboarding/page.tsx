@@ -86,6 +86,13 @@ export default function OnboardingPage() {
           ? data.registrantRelationship
           : undefined,
         registrantPhone: data.isDeceased ? data.registrantPhone : undefined,
+        nok: data.nok.map((n) => ({
+          fullName: n.fullName.trim(),
+          relationship: n.relationship,
+          phone: n.phone.trim(),
+          nin: n.nin?.trim() || undefined,
+          address: n.address?.trim() || undefined,
+        })),
       });
 
       const res = await fetch("/api/onboarding/advance-step", {

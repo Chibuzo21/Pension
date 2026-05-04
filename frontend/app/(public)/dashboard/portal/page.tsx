@@ -16,6 +16,7 @@ import { RecentVerificationsList } from "@/components/portal/RecentVerificationL
 import { BiometricStatusCard } from "@/components/portal/BiometricStatusCard";
 import { useConvexUser } from "@/lib/useConvexUser";
 import { DeathReportCard } from "@/components/portal/DeathReportCard";
+import { NextOfKinCard } from "@/components/portal/NextOfKinCard";
 
 const OVERDUE_MS = 37 * 24 * 60 * 60 * 1000;
 
@@ -100,6 +101,7 @@ export default function PensionerPortalPage() {
 
       {/* Personal details */}
       {pensioner && <PersonalSummaryCard pensioner={pensioner} />}
+      {pensioner && <NextOfKinCard pensionerId={pensioner._id} />}
 
       {/* Service record */}
       {pensioner && <ServiceRecordCard pensioner={pensioner} />}

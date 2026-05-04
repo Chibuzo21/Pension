@@ -279,13 +279,23 @@ export const selfRegister = mutation({
     accountNumber: v.optional(v.string()),
     gratuityAmount: v.optional(v.number()),
     userId: v.id("users"),
-    totalGratuity: v.optional(v.number()),
     gratuityPaid: v.optional(v.number()),
     isDeceased: v.optional(v.boolean()),
     dateOfDeath: v.optional(v.string()),
     registrantName: v.optional(v.string()),
     registrantRelationship: v.optional(v.string()),
     registrantPhone: v.optional(v.string()),
+    nok: v.optional(
+      v.array(
+        v.object({
+          fullName: v.string(),
+          relationship: v.string(),
+          phone: v.string(),
+          nin: v.optional(v.string()),
+          address: v.optional(v.string()),
+        }),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     const {
@@ -326,8 +336,9 @@ export const selfRegister = mutation({
     const id = await ctx.db.insert("pensioners", {
       ...data,
       pensionId,
+      nok: undefined,
       gratuityAmount: data.gratuityAmount ?? 0,
-      gratuityPaid: 0,
+      gratuityPaid: data.gratuityPaid ?? 0,
       selfRegistered: true,
       // Suspend immediately if registering a deceased pensioner
       status: isDeceased ? "suspended" : "active",
@@ -365,6 +376,22 @@ export const selfRegister = mutation({
         entityId: id,
         details: `Registered by ${registrantName ?? "unknown"} (${registrantRelationship ?? "unknown"}), phone: ${registrantPhone ?? "unknown"}`,
       });
+    }
+    if (data.nok && data.nok.length > 0) {
+      await Promise.all(
+        data.nok.map((nok) =>
+          ctx.db.insert("nextOfKin", {
+            pensionerId: id,
+            fullName: nok.fullName,
+            relationship: nok.relationship,
+            phone: nok.phone,
+            nin: nok.nin,
+            address: nok.address,
+            addedByUserId: userId,
+            addedAt: Date.now(),
+          }),
+        ),
+      );
     }
 
     return id;

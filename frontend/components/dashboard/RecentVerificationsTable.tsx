@@ -94,12 +94,12 @@ export function RecentVerificationsTable({
                   </td>
                   <td className='px-2.5 py-1.5 text-ink'>
                     {v.assuranceLevel === "L3"
-                      ? "Face+FP+Voice"
+                      ? "Face+Voice"
                       : v.assuranceLevel === "L2"
-                        ? "Face+Voice"
+                        ? "Voice"
                         : v.assuranceLevel === "L1"
-                          ? "Face+FP"
-                          : "Face"}
+                          ? "Face"
+                          : "None"}
                   </td>
                   <td className='px-2.5 py-1.5 font-mono font-bold text-g1'>
                     {v.fusedScore !== undefined
