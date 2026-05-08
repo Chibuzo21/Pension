@@ -12,6 +12,7 @@ export type PensionerFormValues = {
   dateOfEmployment: string;
   dateOfRetirement: string;
   lastMda: string;
+  lastRank: string;
   subTreasury: string;
   bankName: string;
   accountNumber: string;
@@ -41,6 +42,7 @@ export const DEFAULT_PENSIONER_VALUES: PensionerFormValues = {
   dateOfEmployment: "",
   dateOfRetirement: "",
   lastMda: "",
+  lastRank: "",
   subTreasury: "",
   bankName: "",
   accountNumber: "",

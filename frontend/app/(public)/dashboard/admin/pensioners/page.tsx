@@ -185,7 +185,7 @@ export default function PensionersPage() {
 
                       {/* MDA */}
                       <td className='px-3 py-2.5'>
-                        <span className='text-[11px] text-slate truncate max-w-[120px] block'>
+                        <span className='text-[11px] text-slate truncate max-w-30 block'>
                           {p.lastMda ?? "—"}
                         </span>
                       </td>

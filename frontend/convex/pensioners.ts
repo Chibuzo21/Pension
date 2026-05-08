@@ -43,6 +43,47 @@ export const list = query({
   },
 });
 
+// convex/pensioners.ts
+
+export const getMdaCompliance = query({
+  args: { daysThreshold: v.optional(v.number()) },
+  handler: async (ctx, { daysThreshold = 37 }) => {
+    const pensioners = await ctx.db.query("pensioners").collect();
+    const cutoff = Date.now() - daysThreshold * 24 * 60 * 60 * 1000;
+
+    // Group by lastMda
+    const mdaMap: Record<string, { total: number; compliant: number }> = {};
+
+    for (const p of pensioners) {
+      const mda = p.lastMda ?? "Unassigned";
+      if (!mdaMap[mda]) mdaMap[mda] = { total: 0, compliant: 0 };
+      mdaMap[mda].total++;
+
+      // Check latest verification
+      const verifications = await ctx.db
+        .query("verifications")
+        .withIndex("by_pensioner", (q) => q.eq("pensionerId", p._id))
+        .order("desc")
+        .first();
+
+      if (
+        verifications &&
+        new Date(verifications.verificationDate).getTime() >= cutoff
+      ) {
+        mdaMap[mda].compliant++;
+      }
+    }
+
+    return Object.entries(mdaMap)
+      .map(([mda, { total, compliant }]) => ({
+        mda,
+        total,
+        compliant,
+        rate: Math.round((compliant / total) * 100),
+      }))
+      .sort((a, b) => b.rate - a.rate); // highest compliance first
+  },
+});
 export const search = query({
   args: {
     query: v.string(),
@@ -55,8 +96,8 @@ export const search = query({
 
     const results = await ctx.db
       .query("pensioners")
-      .withSearchIndex("search_name", (q) => {
-        let sq = q.search("fullName", searchQuery);
+      .withSearchIndex("search_all", (q) => {
+        let sq = q.search("searchText", searchQuery);
         if (status) {
           sq = sq.eq(
             "status",
@@ -233,6 +274,7 @@ export const create = mutation({
     gratuityAmount: v.number(),
     gratuityPaid: v.number(),
     createdByUserId: v.id("users"),
+    searchText: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -248,6 +290,9 @@ export const create = mutation({
       status: "active",
       biometricLevel: "L0",
       verificationCode: generateCode(),
+      searchText:
+        args.searchText ??
+        `${args.fullName.toLowerCase()} ${args.pensionId.toLowerCase()} ${args.lastMda?.toLowerCase() ?? ""}`,
     });
 
     await ctx.db.insert("auditLogs", {
@@ -274,6 +319,7 @@ export const selfRegister = mutation({
     dateOfEmployment: v.optional(v.string()),
     dateOfRetirement: v.optional(v.string()),
     lastMda: v.optional(v.string()),
+    lastRank: v.optional(v.string()),
     subTreasury: v.optional(v.string()),
     bankName: v.optional(v.string()),
     accountNumber: v.optional(v.string()),
@@ -285,6 +331,7 @@ export const selfRegister = mutation({
     registrantName: v.optional(v.string()),
     registrantRelationship: v.optional(v.string()),
     registrantPhone: v.optional(v.string()),
+    searchText: v.optional(v.string()),
     nok: v.optional(
       v.array(
         v.object({
@@ -336,7 +383,11 @@ export const selfRegister = mutation({
     const id = await ctx.db.insert("pensioners", {
       ...data,
       pensionId,
+      searchText:
+        data.searchText ??
+        `${data.fullName.toLowerCase()} ${pensionId.toLowerCase()} ${data.lastMda?.toLowerCase() ?? ""}`,
       nok: undefined,
+
       gratuityAmount: data.gratuityAmount ?? 0,
       gratuityPaid: data.gratuityPaid ?? 0,
       selfRegistered: true,
@@ -410,6 +461,7 @@ export const update = mutation({
     dateOfEmployment: v.optional(v.string()),
     dateOfRetirement: v.optional(v.string()),
     lastMda: v.optional(v.string()),
+    lastRank: v.optional(v.string()),
     subTreasury: v.optional(v.string()),
     bankName: v.optional(v.string()),
     accountNumber: v.optional(v.string()),

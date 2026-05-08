@@ -40,6 +40,7 @@ export function DetailsTab() {
       <InfoSection title='🏢 Service Record'>
         <InfoGrid>
           <InfoField label='Last MDA' value={pensionerActive.lastMda} />
+          <InfoField label='Last Rank' value={pensionerActive.lastRank} />
           <InfoField label='Sub-Treasury' value={pensionerActive.subTreasury} />
           <InfoField
             label='Date of Employment'

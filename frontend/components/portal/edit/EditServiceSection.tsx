@@ -30,6 +30,13 @@ export function EditServiceSection() {
             />
           </FF>
         </div>
+        <FF label='Last Rank'>
+          <input
+            placeholder='e.g. Director, Chief Superintendent, etc.'
+            className={fi()}
+            {...register("lastRank")}
+          />
+        </FF>
         <FF label='Sub-Treasury / Station'>
           <Controller
             name='subTreasury'

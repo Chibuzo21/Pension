@@ -8,6 +8,7 @@ interface Pensioner {
   subTreasury?: string | null;
   dateOfEmployment?: string | null;
   dateOfRetirement?: string | null;
+  lastRank?: string | null;
 }
 
 function ServiceRow({
@@ -51,7 +52,8 @@ export function ServiceRecordCard({ pensioner }: { pensioner: Pensioner }) {
     pensioner.lastMda ||
     pensioner.subTreasury ||
     pensioner.dateOfEmployment ||
-    pensioner.dateOfRetirement;
+    pensioner.dateOfRetirement ||
+    pensioner.lastRank;
 
   if (!hasData) return null;
 
@@ -84,6 +86,11 @@ export function ServiceRecordCard({ pensioner }: { pensioner: Pensioner }) {
           icon={Building}
           label='Last MDA'
           value={pensioner.lastMda}
+        />
+        <ServiceRow
+          icon={Building}
+          label='Last Rank'
+          value={pensioner.lastRank}
         />
         <ServiceRow
           icon={MapPin}

@@ -26,6 +26,7 @@ export default defineSchema({
   pensioners: defineTable({
     pensionId: v.string(),
     fullName: v.string(),
+    searchText: v.optional(v.string()),
     userId: v.optional(v.string()),
     faceEmbedding: v.optional(v.string()),
     dob: v.string(),
@@ -37,6 +38,7 @@ export default defineSchema({
     dateOfEmployment: v.optional(v.string()),
     dateOfRetirement: v.optional(v.string()),
     lastMda: v.optional(v.string()),
+    lastRank: v.optional(v.string()),
     subTreasury: v.optional(v.string()),
     bankName: v.optional(v.string()),
     accountNumber: v.optional(v.string()),
@@ -103,8 +105,8 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_nin", ["nin"])
     .index("by_biometricLevel", ["biometricLevel"])
-    .searchIndex("search_name", {
-      searchField: "fullName",
+    .searchIndex("search_all", {
+      searchField: "searchText",
       filterFields: ["status"],
     }),
 

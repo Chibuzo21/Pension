@@ -1,14 +1,13 @@
 "use client";
 
-import { useMutation, useQuery, useAction } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, statusBadge, biometricLevelBadge } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import { useConvexUser } from "@/lib/useConvexUser";
+import { MdaComplianceChart } from "@/components/reports/MdaComplianceChart";
 import {
   AlertTriangle,
   Clock,
@@ -158,6 +157,7 @@ export default function ReportsPage() {
           accent='purple'
         />
       </div>
+      <MdaComplianceChart daysThreshold={threshold} />
 
       {/* Overdue table card */}
       <div className='bg-white border border-smoke rounded-xl overflow-hidden min-w-0'>

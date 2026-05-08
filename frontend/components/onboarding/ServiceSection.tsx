@@ -13,6 +13,7 @@ import {
 import { FF, SectionHead, fi } from "./FormField";
 import { SUB_TREASURIES } from "@/types/pensioner-new";
 import { RegistrationForm } from "./types";
+import { MdaCombobox } from "./MdaCombobox";
 
 export function ServiceSection() {
   const { register, control } = useFormContext<RegistrationForm>();
@@ -27,13 +28,21 @@ export function ServiceSection() {
       <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
         <div className='sm:col-span-2'>
           <FF label='Last MDA (Ministry / Department / Agency)'>
-            <input
-              placeholder='e.g. Ministry of Finance, Abia State'
-              className={fi()}
-              {...register("lastMda")}
+            <Controller
+              name='lastMda'
+              control={control}
+              render={({ field }) => (
+                <MdaCombobox
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                />
+              )}
             />
           </FF>
         </div>
+        <FF label='Last Rank'>
+          <input type='text' className={fi()} {...register("lastRank")} />
+        </FF>
         <FF label='Sub-Treasury / Station'>
           <Controller
             name='subTreasury'

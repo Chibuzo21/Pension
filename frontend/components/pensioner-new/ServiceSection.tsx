@@ -34,7 +34,12 @@ export default function ServiceSection() {
             />
           </FF>
         </div>
-
+        <FF label='Last Rank'>
+          <Input
+            placeholder='e.g. Director, Chief Superintendent, etc.'
+            {...register("lastRank")}
+          />
+        </FF>
         <FF label='Sub-Treasury / Station'>
           <Controller
             name='subTreasury'

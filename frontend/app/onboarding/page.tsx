@@ -71,6 +71,7 @@ export default function OnboardingPage() {
         address: data.address?.trim() || undefined,
         lastMda: data.lastMda?.trim() || undefined,
         subTreasury: data.subTreasury || undefined,
+        lastRank: data.lastRank?.trim() || undefined,
         dateOfEmployment: data.dateOfEmployment || undefined,
         dateOfRetirement: data.dateOfRetirement || undefined,
         bankName: data.bankName || undefined,

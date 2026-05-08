@@ -11,6 +11,7 @@ export interface RegistrationForm {
   lastMda?: string;
   subTreasury?: string;
   dateOfEmployment?: string;
+  lastRank?: string;
   dateOfRetirement?: string;
   bankName?: string;
   accountNumber?: string;
